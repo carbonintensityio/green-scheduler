@@ -18,9 +18,7 @@
     </modules>
 
     <properties>
-        <quarkus.version>3.22.2</quarkus.version>
-        <surefire-plugin.version>3.5.3</surefire-plugin.version>
-        <failsafe-plugin.version>${surefire-plugin.version}</failsafe-plugin.version>
+        <quarkus.version>3.28.1</quarkus.version>
     </properties>
 
     <dependencyManagement>
@@ -45,7 +43,6 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${surefire-plugin.version}</version>
                     <configuration>
                         <systemPropertyVariables>
                             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
@@ -56,7 +53,6 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>${failsafe-plugin.version}</version>
                     <configuration>
                         <systemPropertyVariables>
                             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>

@@ -2,51 +2,10 @@
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
     <servers>
         <server>
-            <id>nexus</id>
-            <username><![CDATA[${env.NEXUS_USERNAME}]]></username>
-            <password><![CDATA[${env.NEXUS_PASSWORD}]]></password>
-        </server>
-        <server>
-            <id>snapshots</id>
-            <username><![CDATA[${env.NEXUS_USERNAME}]]></username>
-            <password><![CDATA[${env.NEXUS_PASSWORD}]]></password>
-        </server>
-        <server>
-            <id>releases</id>
-            <username><![CDATA[${env.NEXUS_USERNAME}]]></username>
-            <password><![CDATA[${env.NEXUS_PASSWORD}]]></password>
+            <id>central</id>
+            <username>${env.MAVEN_USERNAME}</username>
+            <password>${env.MAVEN_PASSWORD}</password>
         </server>
     </servers>
-    <profiles>
-        <profile>
-            <id>mirror</id>
-            <repositories>
-                <repository>
-                    <id>nexus</id>
-                    <url>${env.MAVEN_MIRROR}</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                </repository>
-            </repositories>
-            <pluginRepositories>
-                <pluginRepository>
-                    <id>nexus</id>
-                    <url>${env.MAVEN_MIRROR}</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                </pluginRepository>
-            </pluginRepositories>
-        </profile>
-    </profiles>
-    <activeProfiles>
-        <activeProfile>mirror</activeProfile>
-    </activeProfiles>
+
 </settings>
