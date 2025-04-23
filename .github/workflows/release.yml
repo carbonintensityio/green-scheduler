@@ -1,9 +1,10 @@
 name: Release
 
 env:
-  MAVEN_MIRROR: ${{ secrets.MAVEN_MIRROR }}
-  NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-  NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+  # Setup Maven Central portal
+  MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+  MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+  MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
   COMMON_MAVEN_ARGS: "-e -B --activate-profiles release --settings .github/mvn-settings.xml --fail-at-end -Dno-format"
 
 on:
@@ -11,11 +12,18 @@ on:
     types: [ closed ]
     paths:
       - '.github/project.yml'
+  push:
+    branches:
+      - 21-publish-artefacts-on-maven-central
+    paths:
+      - '.github/project.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{github.event.pull_request.merged == true}}
+    permissions:
+      contents: write
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true || github.event_name == 'push'
 
     steps:
       - name: Checkout
@@ -25,7 +33,7 @@ jobs:
         uses: radcortez/project-metadata-action@main
         id: metadata
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           metadata-file-path: '.github/project.yml'
           local-file: 'true'
 
@@ -41,18 +49,24 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
-      - name: Build artefact
-        run: ./mvnw $COMMON_MAVEN_ARGS --file pom.xml -Drevision=${{steps.metadata.outputs.current-version}} deploy
-
-      - name: Tag
-        uses: hole19/git-tag-action@master
+      - name: Setup GPG signing
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import || true
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo RELOADAGENT | gpg-connect-agent
         env:
-          TAG: 'v${{ steps.metadata.outputs.current-version }}'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Build, sign & publish artefact
+        run: ./mvnw $COMMON_MAVEN_ARGS --file pom.xml -Drevision=${{ steps.metadata.outputs.current-version }} -Dgpg.keyname=${{ secrets.GPG_KEY_ID }} deploy
 
       - name: Create GitHub release and upload artefact
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: target/*.jar
+          tag_name: 'v${{ steps.metadata.outputs.current-version }}'
+          make_latest: true
+          generate_release_notes: 'v${{ steps.metadata.outputs.current-version }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

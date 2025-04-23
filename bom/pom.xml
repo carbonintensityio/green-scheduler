@@ -15,11 +15,11 @@
 
     <properties>
         <!-- keep alphabetically ordered -->
-        <assertj.version>3.26.3</assertj.version>
+        <assertj.version>3.27.3</assertj.version>
         <awaitility.version>4.3.0</awaitility.version>
         <caffeine.version>3.2.0</caffeine.version>
         <junit.jupiter.version>5.12.2</junit.jupiter.version>
-        <mockito.junit.jupiter.version>5.17.0</mockito.junit.jupiter.version>
+        <mockito.junit.jupiter.version>5.20.0</mockito.junit.jupiter.version>
         <parsson.version>1.1.7</parsson.version>
         <slf4j.version>2.0.17</slf4j.version>
         <jmh.version>1.37</jmh.version>
@@ -95,7 +95,7 @@
             <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
-                <version>${assetj.version}</version>
+                <version>${assertj.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.awaitility</groupId>

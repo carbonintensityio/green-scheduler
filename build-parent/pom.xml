@@ -26,8 +26,6 @@
          -->
         <supported-maven-versions>${maven.min.version}</supported-maven-versions>
 
-        <assertj.version>3.27.3</assertj.version>
-
         <!-- Code Coverage Properties-->
         <jacoco.agent.argLine></jacoco.agent.argLine>
 
@@ -41,13 +39,6 @@
                 <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
-                <version>${assertj.version}</version>
-                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -128,6 +119,11 @@
                             <nonFilteredFileExtension>js</nonFilteredFileExtension>
                         </nonFilteredFileExtensions>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${version.exec.plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
