@@ -38,7 +38,7 @@ Add the following dependency to the pom for a Spring Boot based project:
 <dependency>
     <groupId>io.carbonintensity</groupId>
     <artifactId>scheduler-spring-boot-starter</artifactId>
-    <version>999-SNAPSHOT</version>
+    <version>0.8.0</version>
 </dependency>
 ```
 
@@ -47,7 +47,7 @@ or the following for a Quarkus-based project:
    <dependency>
       <groupId>io.carbonintensity</groupId>
       <artifactId>quarkus-green-scheduler</artifactId>
-      <version>999-SNAPSHOT</version>
+      <version>0.8.0</version>
     </dependency>
 ```
 
@@ -56,7 +56,7 @@ In the application.yaml add the following config including the [API-key](#reques
 ```yaml
 greenScheduled:
   api-key: { CARBONINTENSITY_API_KEY }
-  api-url: https://carbonintensity-o.cloud.first8.nl
+  api-url: https://api.carbonintensity.io
   enabled: true
 ```
 
