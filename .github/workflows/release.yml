@@ -12,11 +12,6 @@ on:
     types: [ closed ]
     paths:
       - '.github/project.yml'
-  push:
-    branches:
-      - 21-publish-artefacts-on-maven-central
-    paths:
-      - '.github/project.yml'
 
 jobs:
   build:
