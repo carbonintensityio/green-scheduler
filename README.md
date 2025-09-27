@@ -1,5 +1,11 @@
 ![logo.png](images/green-scheduler-logo.png)
 
+[![Version](https://img.shields.io/maven-central/v/io.carbonintensity/scheduler-bom?logo=apache-maven&style=for-the-badge)](https://search.maven.org/artifact/io.carbonintensity/scheduler-bom)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/carbonintensityio/scheduler/build.yml?branch=main&style=for-the-badge)](https://github.com/carbonintensityio/scheduler/actions?query=workflow%3ABuild)
+[![Commits](https://img.shields.io/github/commit-activity/m/carbonintensityio/scheduler.svg?label=commits&style=for-the-badge&logo=git&logoColor=white)](https://github.com/carbonintensityio/scheduler/pulse)
+[![License](https://img.shields.io/github/license/quarkusio/quarkus?style=for-the-badge&logo=apache&color=brightgreen)](https://www.apache.org/licenses/LICENSE-2.0)
+[![GitHub Repo stars](https://img.shields.io/github/stars/carbonintensityio/scheduler?style=for-the-badge)](https://github.com/carbonintensityio/scheduler/stargazers)
+
 # Green scheduling without effort
 
 This open-source job scheduler for Java developers revolutionizes the way you manage your tasks by dynamically assigning jobs to timeslots with greener energy. By effortlessly integrating this scheduler into your software, you can significantly reduce your carbon footprint and contribute to a more sustainable future. Embrace the power of green energy and make your software run greener with ease.
