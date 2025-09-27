@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Retrieve metadata
         uses: radcortez/project-metadata-action@main
@@ -38,7 +38,7 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: Setup JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
