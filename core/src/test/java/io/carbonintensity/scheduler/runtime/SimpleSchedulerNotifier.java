@@ -12,7 +12,7 @@ public class SimpleSchedulerNotifier {
         this.scheduler = scheduler;
     }
 
-    public void nofity() {
+    public void check() {
         if (scheduler != null) {
             scheduler.checkTriggers();
         }

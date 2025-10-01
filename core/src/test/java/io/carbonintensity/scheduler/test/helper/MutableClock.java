@@ -23,7 +23,7 @@ public class MutableClock extends Clock {
 
     public void shift(Duration duration) {
         this.offset = this.offset.plus(duration);
-        this.notifier.nofity();
+        this.notifier.check();
     }
 
     public SimpleSchedulerNotifier getNotifier() {
