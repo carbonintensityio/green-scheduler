@@ -1,7 +1,6 @@
 package io.carbonintensity.scheduler;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +31,7 @@ import io.carbonintensity.scheduler.runtime.ImmutableScheduledMethod;
 import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 import io.carbonintensity.scheduler.runtime.SimpleScheduler;
+import io.carbonintensity.scheduler.test.helper.AnnotationUtil;
 import io.carbonintensity.scheduler.test.helper.DisabledDummyCarbonIntensityApi;
 import io.carbonintensity.scheduler.test.helper.MutableClock;
 
@@ -70,14 +70,14 @@ class TestSuccessiveWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.successive()).thenReturn("12h 4h 12h");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("1h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .successive("12h 4h 12h")
+                .zone("NL")
+                .duration("1h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -89,7 +89,9 @@ class TestSuccessiveWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(7, 16)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2024, 6, 1),
+                                LocalTime.of(7, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
 
         schedulerConfig.setClock(mutableClock);
@@ -141,14 +143,14 @@ class TestSuccessiveWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.successive()).thenReturn("12h 4h 12h"); // this should return a calculated interval of 8h
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("1h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .successive("12h 4h 12h")
+                .zone("NL")
+                .duration("1h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -160,7 +162,9 @@ class TestSuccessiveWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2024, 6, 1),
+                                LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
         schedulerConfig.setClock(mutableClock);
 
@@ -172,7 +176,7 @@ class TestSuccessiveWindowScheduler {
             scheduler.scheduleMethod(immutableScheduledMethod);
             mutableClock.getNotifier().register(scheduler);
             scheduler.start();
-            mutableClock.getNotifier().nofity();
+            mutableClock.getNotifier().check();
 
             // Wait a few seconds, when using the fallback, it should immediately run
             Awaitility.waitAtMost(SCHEDULER_WAITING_PERIOD, TimeUnit.MILLISECONDS)

@@ -53,7 +53,7 @@ public class GreenScheduledAnnotationParser {
         int minute = startTime.getMinute();
         int second = startTime.getSecond();
 
-        if (dayOfMonth != null) {
+        if (dayOfMonth != null && !dayOfMonth.isBlank()) {
             try {
                 String cronString = String.format("%d %d %d %s * ?", second, minute, hour, dayOfMonth);
                 return cronParser.parse(cronString);
@@ -61,7 +61,7 @@ public class GreenScheduledAnnotationParser {
                 throw new IllegalArgumentException("Invalid CRON format: " + dayOfMonth, e);
             }
         }
-        if (dayOfWeek != null) {
+        if (dayOfWeek != null && !dayOfWeek.isBlank()) {
             try {
                 String cronString = String.format("%d %d %d ? * %s", second, minute, hour, dayOfWeek);
                 return cronParser.parse(cronString);
@@ -81,7 +81,8 @@ public class GreenScheduledAnnotationParser {
         List<String> validationErrors = GreenScheduledAnnotationValidation.validateAndReturnValidationErrors(annotation);
         if (!validationErrors.isEmpty()) {
             throw new IllegalArgumentException(
-                    "Found " + validationErrors.size() + " validation errors while creating GreenScheduled constraints for "
+                    "Found " + validationErrors.size() + " validation error" + (validationErrors.size() > 1 ? "2" : "")
+                            + " while creating GreenScheduled constraints for "
                             + identity + ": \n" + String.join("\n", validationErrors));
         }
 

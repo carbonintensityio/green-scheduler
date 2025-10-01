@@ -1,7 +1,6 @@
 package io.carbonintensity.scheduler;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +33,7 @@ import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 import io.carbonintensity.scheduler.runtime.SimpleScheduler;
 import io.carbonintensity.scheduler.runtime.SimpleSchedulerNotifier;
+import io.carbonintensity.scheduler.test.helper.AnnotationUtil;
 import io.carbonintensity.scheduler.test.helper.DisabledDummyCarbonIntensityApi;
 import io.carbonintensity.scheduler.test.helper.MutableClock;
 
@@ -73,14 +73,14 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -92,7 +92,8 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2024, 6, 1), LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
 
         schedulerConfig.setClock(mutableClock);
@@ -131,7 +132,7 @@ class TestFixedWindowScheduler {
         CountDownLatch cdl = new CountDownLatch(2);
 
         //always start the test on first sunday from now
-        int daysUntilSunday = 7 - LocalDate.now().getDayOfWeek().getValue();
+        LocalDate sunday = LocalDate.of(2024, 6, 2);
 
         ScheduledInvoker scheduledCountDownInvoker = execution -> {
             try {
@@ -143,15 +144,15 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.dayOfWeek()).thenReturn("MON");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .dayOfWeek("MON")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -163,7 +164,7 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now().plusDays(daysUntilSunday), LocalTime.of(4, 16)),
+                        .of(LocalDateTime.of(sunday, LocalTime.of(4, 16)),
                                 ZoneId.of("Europe/Amsterdam"))
                         .toInstant(),
                         zone));
@@ -210,7 +211,7 @@ class TestFixedWindowScheduler {
 
         // always start the test on 1st day of month (simulated)
         ZonedDateTime initialDate = ZonedDateTime.of(
-                LocalDate.now().withDayOfMonth(1),
+                LocalDate.of(2024, 6, 1),
                 LocalTime.of(4, 16),
                 ZoneId.of("Europe/Amsterdam"));
         ZoneId zone = ZoneId.of("UTC");
@@ -228,15 +229,15 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.dayOfMonth()).thenReturn("2");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocation -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .dayOfMonth("2")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -296,7 +297,7 @@ class TestFixedWindowScheduler {
 
         // start test on 1st of current month at 04:16 Amsterdam time
         ZonedDateTime initialDate = ZonedDateTime.of(
-                LocalDate.now().withDayOfMonth(1),
+                LocalDate.of(2024, 6, 1),
                 LocalTime.of(4, 16),
                 ZoneId.of("Europe/Amsterdam"));
         ZoneId utcZone = ZoneId.of("UTC");
@@ -314,15 +315,15 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.dayOfMonth()).thenReturn("2,15");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocation -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .dayOfMonth("2,15")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -386,7 +387,7 @@ class TestFixedWindowScheduler {
         CountDownLatch cdl = new CountDownLatch(6);
 
         //always start the test on first sunday from now
-        int daysUntilSunday = 7 - LocalDate.now().getDayOfWeek().getValue();
+        LocalDate sunday = LocalDate.of(2024, 6, 2);
 
         ScheduledInvoker scheduledCountDownInvoker = execution -> {
             try {
@@ -398,15 +399,15 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.dayOfWeek()).thenReturn("MON-FRI");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .dayOfWeek("MON-FRI")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -418,7 +419,7 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now().plusDays(daysUntilSunday), LocalTime.of(4, 16)),
+                        .of(LocalDateTime.of(sunday, LocalTime.of(4, 16)),
                                 ZoneId.of("Europe/Amsterdam"))
                         .toInstant(),
                         zone));
@@ -479,15 +480,15 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.cron()).thenReturn("0 15 10 * * ?");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .cron("0 15 10 * * ?")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -499,7 +500,9 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2024, 6, 1),
+                                LocalTime.of(4, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
         schedulerConfig.setClock(mutableClock);
 
@@ -544,14 +547,14 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15"); // setting no fallback cron, so default will become 6:40
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -563,7 +566,9 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(4, 44)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2025, 6, 1),
+                                LocalTime.of(4, 44)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
         schedulerConfig.setClock(mutableClock);
 
@@ -608,14 +613,14 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -625,7 +630,8 @@ class TestFixedWindowScheduler {
 
         Clock fixedClock = Clock
                 .fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(8, 15, 30)), ZoneId.of("Europe/Amsterdam"))
+                        .of(LocalDateTime.of(LocalDate.of(2025, 6, 1),
+                                LocalTime.of(8, 15, 30)), ZoneId.of("Europe/Amsterdam"))
                         .toInstant(), ZoneId.systemDefault());
 
         schedulerConfig.setClock(fixedClock);
@@ -636,7 +642,7 @@ class TestFixedWindowScheduler {
         scheduler.start();
         SimpleSchedulerNotifier notifier = new SimpleSchedulerNotifier();
         notifier.register(scheduler);
-        notifier.nofity();
+        notifier.check();
 
         Awaitility.waitAtMost(SCHEDULER_WAITING_PERIOD, TimeUnit.MILLISECONDS)
                 .until(() -> cdl.getCount() == 0);
@@ -657,14 +663,14 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("05:15 08:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("05:15 08:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -674,7 +680,8 @@ class TestFixedWindowScheduler {
 
         //  Set the time just after endTime (8:15) + overDueGracePeriod (90s)
         Clock fixedClock = Clock
-                .fixed(ZonedDateTime.of(LocalDateTime.of(LocalDate.now(), LocalTime.of(8, 17)), ZoneId.of("Europe/Amsterdam"))
+                .fixed(ZonedDateTime.of(LocalDateTime.of(LocalDate.of(2025, 6, 1),
+                        LocalTime.of(8, 17)), ZoneId.of("Europe/Amsterdam"))
                         .toInstant(),
                         ZoneId.systemDefault());
 
@@ -703,14 +710,14 @@ class TestFixedWindowScheduler {
             }
         };
 
-        GreenScheduled greenScheduled = mock(GreenScheduled.class);
-        when(greenScheduled.fixedWindow()).thenReturn("23:15 02:15");
-        when(greenScheduled.zone()).thenReturn("NL");
-        when(greenScheduled.duration()).thenReturn("2h");
-        when(greenScheduled.identity()).thenReturn("test");
-        when(greenScheduled.overdueGracePeriod()).thenReturn("PT90S");
-        when(greenScheduled.timeZone()).thenReturn("Europe/Amsterdam");
-        when(greenScheduled.skipExecutionIf()).thenAnswer(invocationOnMock -> SkipPredicate.Never.class);
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .fixedWindow("23:15 02:15")
+                .zone("NL")
+                .duration("2h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
 
         ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
                 scheduledCountDownInvoker,
@@ -722,7 +729,9 @@ class TestFixedWindowScheduler {
         // Create a mutable clock so that we can properly simulate running through a fixedTimeFrame
         MutableClock mutableClock = new MutableClock(
                 Clock.fixed(ZonedDateTime
-                        .of(LocalDateTime.of(LocalDate.now(), LocalTime.of(22, 16)), ZoneId.of("Europe/Amsterdam")).toInstant(),
+                        .of(LocalDateTime.of(LocalDate.of(2025, 6, 1),
+                                LocalTime.of(22, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
                         zone));
 
         schedulerConfig.setClock(mutableClock);
