@@ -35,11 +35,11 @@ public class DevModeTest extends DevUIJsonRPCTest {
     }
 
     static class Jobs {
-        @GreenScheduled(identity = "the_schedule", successive = "1S 4S 5S", duration = "PT1M", zone = "NL")
+        @GreenScheduled(identity = "the_schedule", successive = "1S 4S 5S", duration = "PT1M", carbonIntensityZone = "NL")
         void ping() {
         }
 
-        @GreenScheduled(identity = "the_schedule2", successive = "1S 4S 5S", duration = "PT1M", zone = "NL")
+        @GreenScheduled(identity = "the_schedule2", successive = "1S 4S 5S", duration = "PT1M", carbonIntensityZone = "NL")
         void ping2() {
         }
     }

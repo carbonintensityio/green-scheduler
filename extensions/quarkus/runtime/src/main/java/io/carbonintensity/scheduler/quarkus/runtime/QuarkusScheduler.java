@@ -98,8 +98,8 @@ public class QuarkusScheduler {
             }
 
             @Override
-            public String zone() {
-                return SchedulerUtils.lookUpPropertyValue(scheduled.zone());
+            public String carbonIntensityZone() {
+                return SchedulerUtils.lookUpPropertyValue(scheduled.carbonIntensityZone());
             }
 
             @Override

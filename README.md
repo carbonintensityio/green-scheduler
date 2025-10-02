@@ -23,7 +23,7 @@ Over a month we can see significant reductions in the carbon footprint of this j
 
 This scheduler uses carbon intensity data provided by the carbonintensity.io API — a publicly available service developed by the carbonintensity.io team. Access to the API is free and requires an [API key](#requesting-an-api-key).
 
-The scheduler is tested with Spring, Spring Boot and Quarkus for the NL (Netherlands) zone. For known issues, planned improvements, and feature requests, please refer to the issues section.
+The scheduler is tested with Spring, Spring Boot and Quarkus for the NL (Netherlands) carbonIntensityZone. For known issues, planned improvements, and feature requests, please refer to the issues section.
 
 ## How to build
 
@@ -68,13 +68,13 @@ To get an API-key to use the GreenScheduled annotation, please email `carboninte
 
 #### Fixed
 
-A scheduler in starting each day in the configured fixed window, where the actual start-time is calculated using the carbon intensity on the set zone and the configured estimated duration of the job. Optionally, a timezone can be configured in the annotation to specify in which timezone the start and end-time of the fixedWindow are. When no timezone is configured, it will default to the system-default timezone. Note that if the application is redeployed during this window, it might run again.
+A scheduler in starting each day in the configured fixed window, where the actual start-time is calculated using the carbon intensity on the set carbonIntensityZone and the configured estimated duration of the job. Optionally, a timezone can be configured in the annotation to specify in which timezone the start and end-time of the fixedWindow are. When no timezone is configured, it will default to the system-default timezone. Note that if the application is redeployed during this window, it might run again.
 
 Using the "regular" scheduler:
 
 ```java
 
-@Scheduled(cron = "0 0 9 * * ?", zone = "Europe/Amsterdam")
+@Scheduled(cron = "0 0 9 * * ?", carbonIntensityZone = "Europe/Amsterdam")
 public void runAt9AM() {
     // Task to be executed at 9 AM every day
 }
@@ -83,7 +83,7 @@ public void runAt9AM() {
 This would be replaced by the `@GreenScheduled` annotation. The job below might start at 8:00, 17:00 or anywhere in between, depending on the carbon intensity calculation. Also see javadoc of `@GreenScheduled`.
 ```java
 
-@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", zone = "NL", timeZone = "Europe/Amsterdam")
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
 public void greenFixedWindowJob() {
     // Task to be started at the greenest moment between 08:00 and 17:00
 }
@@ -97,12 +97,12 @@ Using the "regular" scheduler:
 
 ```java
 
-@Scheduled(cron = "0 0 9 ? * MON", zone = "Europe/Amsterdam")
+@Scheduled(cron = "0 0 9 ? * MON", carbonIntensityZone = "Europe/Amsterdam")
 public void runAt9AMonMonday() {
     // Task to be executed at 9 AM every monday
 }
 
-@Scheduled(cron = "0 0 9 1 * ?", zone = "Europe/Amsterdam")
+@Scheduled(cron = "0 0 9 1 * ?", carbonIntensityZone = "Europe/Amsterdam")
 public void runAt9AMFirstOfMonth() {
     // Task to be executed at 9 AM every first of the month
 }
@@ -113,12 +113,12 @@ Using the green scheduler:
 
 ```java
 
-@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", zone = "NL", timeZone = "Europe/Amsterdam", dayOfWeek= "MON")
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam", dayOfWeek= "MON")
 public void greenFixedWindowJobMonday() {
     // Task to be started at the greenest moment between 08:00 and 17:00
 }
 
-@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", zone = "NL", timeZone = "Europe/Amsterdam", dayOfMonth= "1")
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam", dayOfMonth= "1")
 public void greenFixedWindowJobFirstMonth() {
     // Task to be started at the greenest moment between 08:00 and 17:00
 }
@@ -126,12 +126,12 @@ public void greenFixedWindowJobFirstMonth() {
 
 #### Successive (experimental)
 
-A scheduler starting at the lowest carbon intensity for the zone within the configured gaps, keeping in mind the duration and zone while calculating the optimal starting time of the job.
+A scheduler starting at the lowest carbon intensity for the carbonIntensityZone within the configured gaps, keeping in mind the duration and carbonIntensityZone while calculating the optimal starting time of the job.
 
 Using the "regular" scheduler to run a process every 3 hours:
 ```java
 
-@Scheduled(cron = "0 0 */3 * * ?", zone = "Europe/Amsterdam")
+@Scheduled(cron = "0 0 */3 * * ?", carbonIntensityZone = "Europe/Amsterdam")
 public void runEvery3Hours() {
     // Task to be executed every 3 hours
 }
@@ -140,7 +140,7 @@ public void runEvery3Hours() {
 Will be replaced by the `@GreenScheduled` annotation. In the example below an initial maximum gap of 3h, the scheduler will find the start-time with the lowest carbon intensity within the first 3 hours of deployment as initial starting point. To then have a minimum gap of 1h and max of 4h between each consecutive run. Also see javadoc of `@GreenScheduled`.
 
 ```java
-@GreenScheduled(successive = "3h 1h 4h", duration = "PT30M", zone = "NL")
+@GreenScheduled(successive = "3h 1h 4h", duration = "PT30M", carbonIntensityZone = "NL")
 public void greenSuccessiveWindowJob() {
     // Scheduled job process starting at the greenest moment in the specified window
 }

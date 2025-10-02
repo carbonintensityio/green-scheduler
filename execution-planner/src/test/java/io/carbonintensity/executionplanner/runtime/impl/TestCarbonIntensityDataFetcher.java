@@ -27,7 +27,7 @@ class TestCarbonIntensityDataFetcher {
     ZonedCarbonIntensityPeriod zonedPeriod = new ZonedCarbonIntensityPeriod.Builder()
             .withStartTime(startTime)
             .withEndTime(endTime)
-            .withZone("nl")
+            .withCarbonIntensityZone("nl")
             .build();
 
     @Mock

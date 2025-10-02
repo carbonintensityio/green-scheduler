@@ -32,7 +32,7 @@ public class GreenScheduledAnnotationValidation {
             validationErrors.add("Either fixedWindow or successive must be specified");
         }
 
-        if (StringUtils.isEmpty(annotation.zone())) {
+        if (StringUtils.isEmpty(annotation.carbonIntensityZone())) {
             validationErrors.add("Zone must be specified");
         }
 

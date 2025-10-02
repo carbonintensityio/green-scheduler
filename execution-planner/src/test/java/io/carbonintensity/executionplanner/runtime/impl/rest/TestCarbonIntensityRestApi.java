@@ -48,7 +48,7 @@ class TestCarbonIntensityRestApi {
         zonedPeriod = new ZonedCarbonIntensityPeriod.Builder()
                 .withStartTime(startTime)
                 .withEndTime(endTime)
-                .withZone(zone)
+                .withCarbonIntensityZone(zone)
                 .build();
 
         config = new CarbonIntensityApiConfig.Builder()

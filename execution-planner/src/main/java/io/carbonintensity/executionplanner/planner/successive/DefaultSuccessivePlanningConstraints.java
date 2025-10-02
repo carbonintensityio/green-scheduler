@@ -16,13 +16,13 @@ public class DefaultSuccessivePlanningConstraints
     private final Duration minimumGap;
     private final Duration maximumGap;
     private final Duration duration;
-    private final String zone;
+    private final String carbonIntensityZone;
 
     private DefaultSuccessivePlanningConstraints(String identity, ZonedDateTime lastExecutionTime,
             ZonedDateTime initialStartTime,
             Duration initialMaximumDelay,
             Duration minimumGap, Duration maximumGap,
-            Duration duration, String zone) {
+            Duration duration, String carbonIntensityZone) {
         this.identity = identity;
         this.lastExecutionTime = lastExecutionTime;
         this.initialStartTime = initialStartTime;
@@ -30,7 +30,7 @@ public class DefaultSuccessivePlanningConstraints
         this.minimumGap = minimumGap;
         this.maximumGap = maximumGap;
         this.duration = duration;
-        this.zone = zone;
+        this.carbonIntensityZone = carbonIntensityZone;
     }
 
     public Duration getInitialMaximumDelay() {
@@ -49,8 +49,8 @@ public class DefaultSuccessivePlanningConstraints
         return duration;
     }
 
-    public String getZone() {
-        return zone;
+    public String getCarbonIntensityZone() {
+        return carbonIntensityZone;
     }
 
     public String getIdentity() {
@@ -77,7 +77,7 @@ public class DefaultSuccessivePlanningConstraints
                 .withMinimumGap(constraints.getMinimumGap())
                 .withMaximumGap(constraints.getMaximumGap())
                 .withDuration(constraints.getDuration())
-                .withZone(constraints.getZone());
+                .withCarbonIntensityZone(constraints.getCarbonIntensityZone());
 
     }
 
@@ -89,7 +89,7 @@ public class DefaultSuccessivePlanningConstraints
         private Duration minimumGap;
         private Duration maximumGap;
         private Duration duration;
-        private String zone;
+        private String carbonIntensityZone;
 
         private Builder() {
         }
@@ -119,8 +119,8 @@ public class DefaultSuccessivePlanningConstraints
             return this;
         }
 
-        public Builder withZone(String zone) {
-            this.zone = zone;
+        public Builder withCarbonIntensityZone(String carbonIntensityZone) {
+            this.carbonIntensityZone = carbonIntensityZone;
             return this;
         }
 
@@ -138,7 +138,7 @@ public class DefaultSuccessivePlanningConstraints
             return new DefaultSuccessivePlanningConstraints(identity, lastExecutionTime, initialStartTime, initialMaximumDelay,
                     minimumGap,
                     maximumGap,
-                    duration, zone);
+                    duration, carbonIntensityZone);
         }
     }
 }
