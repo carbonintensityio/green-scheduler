@@ -5,7 +5,7 @@ import io.carbonintensity.scheduler.GreenScheduled;
 
 public class TestScheduledJob {
 
-    @GreenScheduled(identity = "testJob", duration = "PT5S", successive = "0H PT1H PT2H", concurrentExecution = ConcurrentExecution.PROCEED, overdueGracePeriod = "PT1H", zone = "nl")
+    @GreenScheduled(identity = "testJob", duration = "PT5S", successive = "0H PT1H PT2H", concurrentExecution = ConcurrentExecution.PROCEED, overdueGracePeriod = "PT1H", carbonIntensityZone = "nl")
     public void run() {
         System.out.println("running");
     }

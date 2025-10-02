@@ -7,5 +7,5 @@ public interface PlanningConstraints {
 
     Duration getDuration();
 
-    String getZone();
+    String getCarbonIntensityZone();
 }

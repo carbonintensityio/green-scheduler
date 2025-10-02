@@ -103,7 +103,7 @@ public class GreenScheduledAnnotationParser {
                     .withCronExpression(
                             parseCronExpression(fixedWindow.getStartTime(), annotation.dayOfMonth(), annotation.dayOfWeek()))
                     .withStartAndEnd(fixedWindow.getStartTime(), fixedWindow.getEndTime())
-                    .withZone(annotation.zone())
+                    .withCarbonIntensityZone(annotation.carbonIntensityZone())
                     .withTimeZoneId(timeZoneId)
                     .withFallbackCronExpression(fallBackCronExpression)
                     .build();
@@ -119,7 +119,7 @@ public class GreenScheduledAnnotationParser {
                     .withMinimumGap(successive.getMinimumGap())
                     .withMaximumGap(successive.getMaximumGap())
                     .withDuration(parseDuration(annotation.duration()))
-                    .withZone(annotation.zone())
+                    .withCarbonIntensityZone(annotation.carbonIntensityZone())
                     .build();
         }
 

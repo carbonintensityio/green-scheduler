@@ -34,7 +34,7 @@ class TestZonedCarbonIntensityPeriod {
         assertThrows(NullPointerException.class, () -> {
             builder = new ZonedCarbonIntensityPeriod.Builder();
             builder.withEndTime(ZonedDateTime.now());
-            builder.withZone("nl");
+            builder.withCarbonIntensityZone("nl");
             builder.build();
         });
     }
@@ -44,7 +44,7 @@ class TestZonedCarbonIntensityPeriod {
         assertThrows(NullPointerException.class, () -> {
             builder = new ZonedCarbonIntensityPeriod.Builder();
             builder.withStartTime(ZonedDateTime.now());
-            builder.withZone("nl");
+            builder.withCarbonIntensityZone("nl");
             builder.build();
         });
     }
@@ -53,7 +53,7 @@ class TestZonedCarbonIntensityPeriod {
     void whenBuildingMultipleTime_thenReturnUniqueInstances() {
         builder.withEndTime(ZonedDateTime.now());
         builder.withStartTime(ZonedDateTime.now());
-        builder.withZone("nl");
+        builder.withCarbonIntensityZone("nl");
         var zonedPeriod = builder.build();
         assertThat(zonedPeriod).isNotNull();
         assertThat(builder.build()).isNotEqualTo(zonedPeriod);

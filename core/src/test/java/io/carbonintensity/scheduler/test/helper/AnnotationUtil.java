@@ -23,7 +23,7 @@ public class AnnotationUtil {
         private String successive = "";
         private String cron = "";
         private String duration = "";
-        private String zone = null;
+        private String carbonIntensityZone = null;
         private ConcurrentExecution concurrentExecution = ConcurrentExecution.PROCEED;
         private Class<? extends SkipPredicate> skipExecutionIf = SkipPredicate.Never.class;
         private String overdueGracePeriod = "";
@@ -84,8 +84,8 @@ public class AnnotationUtil {
             return this;
         }
 
-        public GreenScheduledBuilder zone(String zone) {
-            this.zone = zone;
+        public GreenScheduledBuilder carbonIntensityZone(String carbonIntensityZone) {
+            this.carbonIntensityZone = carbonIntensityZone;
             return this;
         }
 
@@ -111,7 +111,7 @@ public class AnnotationUtil {
         }
 
         public GreenScheduled build() {
-            Objects.requireNonNull(zone, "Zone cannot be null");
+            Objects.requireNonNull(carbonIntensityZone, "Zone cannot be null");
             return new GreenScheduled() {
                 @Override
                 public Class<? extends Annotation> annotationType() {
@@ -159,8 +159,8 @@ public class AnnotationUtil {
                 }
 
                 @Override
-                public String zone() {
-                    return zone;
+                public String carbonIntensityZone() {
+                    return carbonIntensityZone;
                 }
 
                 @Override

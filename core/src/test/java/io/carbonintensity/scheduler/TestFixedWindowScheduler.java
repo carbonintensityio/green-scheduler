@@ -75,7 +75,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -146,7 +146,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -231,7 +231,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -317,7 +317,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -401,7 +401,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -482,7 +482,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .cron("0 15 10 * * ?")
@@ -549,7 +549,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -615,7 +615,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -665,7 +665,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("05:15 08:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -712,7 +712,7 @@ class TestFixedWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .fixedWindow("23:15 02:15")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("2h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")

@@ -45,7 +45,7 @@ class TestSuccessivePlanner {
                 .withDuration(Duration.ofMinutes(5))
                 .withMinimumGap(Duration.ofMinutes(5))
                 .withMaximumGap(Duration.ofDays(10))
-                .withZone("NL")
+                .withCarbonIntensityZone("NL")
                 .build();
 
         ZonedDateTime nextExecutionTime = defaultCarbonIntensityScheduler.getNextExecutionTime(constraints);
@@ -73,7 +73,7 @@ class TestSuccessivePlanner {
                 .withMaximumGap(maxGap)
                 .withDuration(Duration.ofMinutes(5))
                 .withLastExecutionTime(lastExecutionTime)
-                .withZone("NL")
+                .withCarbonIntensityZone("NL")
                 .build();
 
         ZonedDateTime nextExecutionTime = defaultCarbonIntensityScheduler.getNextExecutionTime(constraints);

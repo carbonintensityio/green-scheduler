@@ -56,7 +56,7 @@ public class SuccessivePlanner implements CarbonIntensityPlanner<SuccessivePlann
         var zonedPeriod = new ZonedCarbonIntensityPeriod.Builder()
                 .withStartTime(dayStart)
                 .withEndTime(dayStart.plusDays(1))
-                .withZone(constraints.getZone())
+                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
                 .build();
         CarbonIntensity carbonIntensity = dataFetcher.fetchCarbonIntensity(zonedPeriod);
 

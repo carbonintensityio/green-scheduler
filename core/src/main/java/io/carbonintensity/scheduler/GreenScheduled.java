@@ -142,7 +142,7 @@ public @interface GreenScheduled {
     String duration() default "";
 
     /**
-     * Defines the zone for fetching carbon intensity data to use when scheduling.
+     * Defines the carbonIntensityZone for fetching carbon intensity data to use when scheduling.
      * <p>
      * The value are case-insensitive and format depends on the
      * {@link CarbonIntensityPlanner}.
@@ -151,9 +151,9 @@ public @interface GreenScheduled {
      * <ul>
      * ZoneId from <a href="https://carbonintensity.io">cabonintensity.io</a>; e.g. NL
      *
-     * @return the zone to use.
+     * @return the carbonIntensityZone to use.
      */
-    String zone();
+    String carbonIntensityZone();
 
     /**
      * Specify the strategy to handle concurrent execution of a scheduled method. By default, a scheduled method can be executed
