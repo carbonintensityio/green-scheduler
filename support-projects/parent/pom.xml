@@ -527,7 +527,7 @@
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <!-- Automagically publish -->
-<!--                            <autoPublish>true</autoPublish>-->
+                            <autoPublish>true</autoPublish>
                         </configuration>
                     </plugin>
                     <plugin>
