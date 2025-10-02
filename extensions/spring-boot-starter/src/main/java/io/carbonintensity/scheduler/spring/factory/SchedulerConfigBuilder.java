@@ -7,7 +7,7 @@ import org.springframework.util.Assert;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiConfig;
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig;
-import io.carbonintensity.scheduler.spring.GreenScheduledProperties;
+import io.carbonintensity.scheduler.spring.GreenSchedulerProperties;
 
 /**
  * {@link SchedulerConfig} builder.
@@ -27,19 +27,19 @@ public class SchedulerConfigBuilder {
      * Constructor starting with default {@link SchedulerConfig}.
      */
     public SchedulerConfigBuilder() {
-        this(new GreenScheduledProperties());
+        this(new GreenSchedulerProperties());
     }
 
     /**
      * Constructor for pre-populating with properties
      *
-     * @param greenScheduledProperties starter properties
+     * @param greenSchedulerProperties starter properties
      */
-    public SchedulerConfigBuilder(GreenScheduledProperties greenScheduledProperties) {
-        populateByProperties(greenScheduledProperties);
+    public SchedulerConfigBuilder(GreenSchedulerProperties greenSchedulerProperties) {
+        populateByProperties(greenSchedulerProperties);
     }
 
-    private void populateByProperties(GreenScheduledProperties properties) {
+    private void populateByProperties(GreenSchedulerProperties properties) {
         properties.getEnabled()
                 .ifPresent(this::enabled);
         properties.getStartMode()

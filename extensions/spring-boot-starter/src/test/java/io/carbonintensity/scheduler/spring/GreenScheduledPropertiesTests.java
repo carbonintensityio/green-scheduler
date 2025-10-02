@@ -1,6 +1,6 @@
 package io.carbonintensity.scheduler.spring;
 
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.*;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
@@ -13,7 +13,7 @@ class GreenScheduledPropertiesTests {
 
     @Test
     void whenCreatingProperties_thenSetDefaultValues() {
-        GreenScheduledProperties properties = new GreenScheduledProperties();
+        GreenSchedulerProperties properties = new GreenSchedulerProperties();
 
         assertThat(properties.getEnabled()).hasValue(true);
         assertThat(properties.getJobExecutors()).hasValue(DEFAULT_NUMBER_OF_JOB_EXECUTORS);
@@ -25,7 +25,7 @@ class GreenScheduledPropertiesTests {
 
     @Test
     void whenOverridingDefaultValues_thenSetOverriddenValues() {
-        GreenScheduledProperties properties = new GreenScheduledProperties(true, SchedulerConfig.StartMode.HALTED, 1,
+        GreenSchedulerProperties properties = new GreenSchedulerProperties(true, SchedulerConfig.StartMode.HALTED, 1,
                 Duration.ofSeconds(1), Duration.ofSeconds(2), "apiKey", "apiUrl");
 
         assertThat(properties.getEnabled()).hasValue(true);

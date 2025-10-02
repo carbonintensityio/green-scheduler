@@ -17,7 +17,7 @@ public class SchedulerProducer {
     private final Logger logger = LoggerFactory.getLogger(SchedulerProducer.class);
 
     @Inject
-    GreenScheduledProperties greenScheduledProperties;
+    GreenSchedulerProperties greenSchedulerProperties;
 
     @Inject
     Instance<CarbonIntensityApi> carbonIntensityApi;
@@ -25,7 +25,7 @@ public class SchedulerProducer {
     @Produces
     @DefaultBean
     public SchedulerConfig schedulerConfig() {
-        var builder = new SchedulerConfigBuilder(greenScheduledProperties);
+        var builder = new SchedulerConfigBuilder(greenSchedulerProperties);
         if (carbonIntensityApi.isResolvable()) {
             builder.carbonIntensityApi(carbonIntensityApi.get());
         }

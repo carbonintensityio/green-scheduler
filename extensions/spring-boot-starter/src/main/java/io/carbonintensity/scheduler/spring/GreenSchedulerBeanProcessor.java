@@ -17,10 +17,10 @@ import io.carbonintensity.scheduler.GreenScheduled;
 /**
  * Finder class for checking all spring managed beans and keeps {@link GreenScheduled} annotated methods.
  */
-public final class GreenScheduledBeanProcessor implements BeanPostProcessor, Iterator<GreenScheduledBeanInfo> {
+public final class GreenSchedulerBeanProcessor implements BeanPostProcessor, Iterator<GreenSchedulerBeanInfo> {
 
-    private final Logger logger = LoggerFactory.getLogger(GreenScheduledBeanProcessor.class);
-    private final Map<String, GreenScheduledBeanInfo> scheduledBeanInfoMap = Collections.synchronizedMap(new HashMap<>());
+    private final Logger logger = LoggerFactory.getLogger(GreenSchedulerBeanProcessor.class);
+    private final Map<String, GreenSchedulerBeanInfo> scheduledBeanInfoMap = Collections.synchronizedMap(new HashMap<>());
 
     /**
      * Checks if given method has {@link GreenScheduled} annotation
@@ -38,7 +38,7 @@ public final class GreenScheduledBeanProcessor implements BeanPostProcessor, Ite
         var beanClass = AopUtils.getTargetClass(bean);
         var methods = beanClass.getDeclaredMethods();
         Stream.of(methods)
-                .filter(GreenScheduledBeanProcessor::isScheduledMethod)
+                .filter(GreenSchedulerBeanProcessor::isScheduledMethod)
                 .forEach(method -> registerBean(beanName, bean, method));
         return bean;
     }
@@ -46,10 +46,10 @@ public final class GreenScheduledBeanProcessor implements BeanPostProcessor, Ite
     private void registerBean(String beanName, Object bean, Method method) {
         logger.info("Registering scheduled bean {} ", beanName);
         var uniqueKey = String.format("%s#%s", beanName, method.getName());
-        scheduledBeanInfoMap.put(uniqueKey, new GreenScheduledBeanInfo(bean, method));
+        scheduledBeanInfoMap.put(uniqueKey, new GreenSchedulerBeanInfo(bean, method));
     }
 
-    public List<GreenScheduledBeanInfo> getScheduledBeanInfoList() {
+    public List<GreenSchedulerBeanInfo> getScheduledBeanInfoList() {
         return new ArrayList<>(scheduledBeanInfoMap.values());
     }
 
@@ -59,7 +59,7 @@ public final class GreenScheduledBeanProcessor implements BeanPostProcessor, Ite
     }
 
     @Override
-    public GreenScheduledBeanInfo next() {
+    public GreenSchedulerBeanInfo next() {
         var key = scheduledBeanInfoMap.keySet().iterator().next();
         return scheduledBeanInfoMap.remove(key);
     }

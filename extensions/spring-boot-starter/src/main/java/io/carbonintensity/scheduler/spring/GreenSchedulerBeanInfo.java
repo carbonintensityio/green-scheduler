@@ -8,7 +8,7 @@ import org.springframework.util.Assert;
 /**
  * Green scheduled bean info class.
  */
-public class GreenScheduledBeanInfo {
+public class GreenSchedulerBeanInfo {
 
     private final Object bean;
     private final Method beanMethod;
@@ -19,7 +19,7 @@ public class GreenScheduledBeanInfo {
      * @param bean bean containing scheduled beanMethod
      * @param beanMethod annotated bean method
      */
-    public GreenScheduledBeanInfo(Object bean, Method beanMethod) {
+    public GreenSchedulerBeanInfo(Object bean, Method beanMethod) {
         Assert.notNull(bean, "bean must not be null");
         Assert.notNull(beanMethod, "beanMethod must not be null");
         this.bean = bean;
@@ -38,9 +38,9 @@ public class GreenScheduledBeanInfo {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof GreenScheduledBeanInfo))
+        if (!(o instanceof GreenSchedulerBeanInfo))
             return false;
-        GreenScheduledBeanInfo that = (GreenScheduledBeanInfo) o;
+        GreenSchedulerBeanInfo that = (GreenSchedulerBeanInfo) o;
         return Objects.equals(getBean(), that.getBean()) && Objects.equals(getBeanMethod(), that.getBeanMethod());
     }
 

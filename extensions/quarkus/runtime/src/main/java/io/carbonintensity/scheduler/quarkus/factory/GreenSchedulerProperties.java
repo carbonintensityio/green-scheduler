@@ -13,8 +13,8 @@ import io.smallrye.config.ConfigMapping;
  * Green Scheduler properties can be found here. All properties have default values and can be overridden.
  */
 @ConfigRoot(phase = ConfigPhase.BUILD_AND_RUN_TIME_FIXED)
-@ConfigMapping(prefix = "greenscheduled")
-public interface GreenScheduledProperties {
+@ConfigMapping(prefix = "green-scheduler")
+public interface GreenSchedulerProperties {
 
     /**
      * Whether to enable or disable. Default true.

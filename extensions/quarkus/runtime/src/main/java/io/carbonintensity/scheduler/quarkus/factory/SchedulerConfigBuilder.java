@@ -31,13 +31,13 @@ public class SchedulerConfigBuilder {
     /**
      * Constructor for pre-populating with properties
      *
-     * @param greenScheduledProperties starter properties
+     * @param greenSchedulerProperties starter properties
      */
-    public SchedulerConfigBuilder(GreenScheduledProperties greenScheduledProperties) {
-        populateByProperties(greenScheduledProperties);
+    public SchedulerConfigBuilder(GreenSchedulerProperties greenSchedulerProperties) {
+        populateByProperties(greenSchedulerProperties);
     }
 
-    private void populateByProperties(GreenScheduledProperties properties) {
+    private void populateByProperties(GreenSchedulerProperties properties) {
         enabled(properties.enabled().orElse(DEFAULT_ENABLED));
         startMode(properties.startMode().orElse(DEFAULT_START_MODE));
         jobExecutorCount(properties.jobExecutors().orElse(DEFAULT_NUMBER_OF_JOB_EXECUTORS));

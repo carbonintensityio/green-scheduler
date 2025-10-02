@@ -4,13 +4,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.carbonintensity</groupId>
-        <artifactId>scheduler-extensions-parent</artifactId>
+        <artifactId>green-scheduler-extensions-parent</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>scheduler-spring-boot-starter</artifactId>
-    <name>Scheduler - Spring Boot Starter</name>
+    <artifactId>green-scheduler-spring-boot-starter</artifactId>
+    <name>Green Scheduler - Spring Boot Starter</name>
 
     <properties>
         <spring.boot.version>3.5.6</spring.boot.version>
@@ -36,7 +36,7 @@
         </dependency>
         <dependency>
             <groupId>io.carbonintensity</groupId>
-            <artifactId>scheduler-core</artifactId>
+            <artifactId>green-scheduler-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

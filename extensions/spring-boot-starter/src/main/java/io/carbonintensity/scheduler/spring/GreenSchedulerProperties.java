@@ -18,8 +18,8 @@ import io.carbonintensity.scheduler.runtime.SchedulerDefaults;
  * 2. Exposing GreenSchedulerProperties bean
  */
 @Validated
-@ConfigurationProperties("greenscheduled")
-public class GreenScheduledProperties {
+@ConfigurationProperties("green-scheduler")
+public class GreenSchedulerProperties {
 
     public static final Duration DEFAULT_OVERDUE_GRACE_PERIOD = SchedulerDefaults.DEFAULT_OVERDUE_GRACE_PERIOD;
     public static final Duration DEFAULT_SHUTDOWN_GRACE_PERIOD = SchedulerDefaults.DEFAULT_SHUTDOWN_GRACE_PERIOD;
@@ -29,7 +29,7 @@ public class GreenScheduledProperties {
     public static final Boolean DEFAULT_ENABLED = true;
 
     @ConstructorBinding // Required to generate metadata: https://stackoverflow.com/questions/79231534/how-can-i-use-optional-values-in-spring-boot-configuration-properties
-    public GreenScheduledProperties(Boolean enabled, SchedulerConfig.StartMode startMode, Integer jobExecutors,
+    public GreenSchedulerProperties(Boolean enabled, SchedulerConfig.StartMode startMode, Integer jobExecutors,
             Duration overdueGracePeriod, Duration shutdownGracePeriod, String apiKey, String apiUrl) {
         this.enabled = Objects.requireNonNullElse(enabled, DEFAULT_ENABLED);
         this.startMode = Objects.requireNonNullElse(startMode, DEFAULT_START_MODE);
@@ -40,7 +40,7 @@ public class GreenScheduledProperties {
         this.apiUrl = Objects.requireNonNullElse(apiUrl, DEFAULT_API_URL);
     }
 
-    public GreenScheduledProperties() {
+    public GreenSchedulerProperties() {
     }
 
     /**

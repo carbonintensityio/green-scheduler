@@ -30,27 +30,27 @@ import io.carbonintensity.scheduler.spring.factory.SpringSchedulerFactory;
  * <p>
  * This scheduler is by default, enabled and scans all spring managed beans for {@link GreenScheduled} annotations. Scheduler
  * can be configured using spring java configuration exposing {@link SchedulerConfig} as bean or by properties class or property
- * values. See {@link GreenScheduledProperties}.
+ * values. See {@link GreenSchedulerProperties}.
  *
  * <p>
  * This scheduler starts only if you have jobs defined with annotation {@link GreenScheduled}.
  */
 @Configuration
-@ConditionalOnProperty(matchIfMissing = true, prefix = "greenscheduled", name = "enabled", havingValue = "true")
-@EnableConfigurationProperties({ GreenScheduledProperties.class })
-public class GreenScheduledAutoConfiguration {
+@ConditionalOnProperty(matchIfMissing = true, prefix = "green-scheduler", name = "enabled", havingValue = "true")
+@EnableConfigurationProperties({ GreenSchedulerProperties.class })
+public class GreenSchedulerAutoConfiguration {
 
-    private final Logger logger = LoggerFactory.getLogger(GreenScheduledAutoConfiguration.class);
+    private final Logger logger = LoggerFactory.getLogger(GreenSchedulerAutoConfiguration.class);
     private SimpleScheduler simpleScheduler;
 
     @Bean
     @ConditionalOnMissingBean
-    static GreenScheduledBeanProcessor createGreenScheduledBeanProcessor() {
-        return new GreenScheduledBeanProcessor();
+    static GreenSchedulerBeanProcessor createGreenScheduledBeanProcessor() {
+        return new GreenSchedulerBeanProcessor();
     }
 
     @Autowired
-    private GreenScheduledProperties greenScheduledProperties;
+    private GreenSchedulerProperties greenSchedulerProperties;
 
     @Autowired(required = false)
     private CarbonIntensityApi carbonIntensityApi;
@@ -58,14 +58,14 @@ public class GreenScheduledAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public SchedulerConfig schedulerConfig() {
-        var configBuilder = new SchedulerConfigBuilder(greenScheduledProperties);
+        var configBuilder = new SchedulerConfigBuilder(greenSchedulerProperties);
         if (carbonIntensityApi != null) {
             configBuilder.carbonIntensityApi(carbonIntensityApi);
         }
         return configBuilder.build();
     }
 
-    @Bean(name = "greenScheduled")
+    @Bean(name = "green-scheduler")
     public SpringSchedulerFactory springSchedulerFactory() {
         return new SpringSchedulerFactory();
     }
@@ -76,7 +76,7 @@ public class GreenScheduledAutoConfiguration {
     }
 
     @Autowired
-    GreenScheduledBeanProcessor greenScheduledBeanProcessor;
+    GreenSchedulerBeanProcessor greenSchedulerBeanProcessor;
 
     @Bean
     public ScheduledMethodFactory scheduledMethodFactory() {
@@ -86,9 +86,9 @@ public class GreenScheduledAutoConfiguration {
     @EventListener
     public void handleContextStart(ContextRefreshedEvent event) {
         var simpleScheduler = (SimpleScheduler) springSchedulerFactory().getObject();
-        while (greenScheduledBeanProcessor.hasNext()) {
-            var beanInfo = greenScheduledBeanProcessor.next();
-            logger.info("Scheduling bean {}", beanInfo.getBean());
+        while (greenSchedulerBeanProcessor.hasNext()) {
+            var beanInfo = greenSchedulerBeanProcessor.next();
+            logger.info("Green scheduler bean {}", beanInfo.getBean());
             var scheduledMethod = scheduledMethodFactory().create(beanInfo.getBean(), beanInfo.getBeanMethod());
             simpleScheduler.scheduleMethod(scheduledMethod);
         }
@@ -97,7 +97,7 @@ public class GreenScheduledAutoConfiguration {
     @PreDestroy
     public void stopScheduler() {
         if (simpleScheduler != null) {
-            logger.info("Stopping the scheduler.");
+            logger.info("Stopping the green scheduler.");
             simpleScheduler.stop();
         }
     }

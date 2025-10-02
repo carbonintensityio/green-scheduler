@@ -7,7 +7,6 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/carbonintensityio/scheduler?style=for-the-badge)](https://github.com/carbonintensityio/scheduler/stargazers)
 
 # Green scheduling without effort
-
 This open-source job scheduler for Java developers revolutionizes the way you manage your tasks by dynamically assigning jobs to timeslots with greener energy. By effortlessly integrating this scheduler into your software, you can significantly reduce your carbon footprint and contribute to a more sustainable future. Embrace the power of green energy and make your software run greener with ease.
 
 Let's look at an example. We have a job currently running at 9 o'clock that runs roughly an hour. From a business point of view we do not really care when it runs. As long as the job is finished before the end of the working day. So we could schedule it anywhere between 8:00 - 17:00.
@@ -20,24 +19,21 @@ Over a month we can see significant reductions in the carbon footprint of this j
 ![carbon-intensity-month-overview.png](images/carbon-intensity-month-overview.png)
 
 ## Current state
-
 This scheduler uses carbon intensity data provided by the carbonintensity.io API — a publicly available service developed by the carbonintensity.io team. Access to the API is free and requires an [API key](#requesting-an-api-key).
 
 The scheduler is tested with Spring, Spring Boot and Quarkus for the NL (Netherlands) carbonIntensityZone. For known issues, planned improvements, and feature requests, please refer to the issues section.
 
 ## How to build
-
 The build instructions are available in the [contribution guide](CONTRIBUTING.md).
 
 ## Usage
-
 Currently, the carbon intensity aware scheduling is not published yet. To use the scheduler see [How to build](#how-to-build) on how to install the package locally.
 
 Add the following dependency to the pom for a Spring Boot based project:
 ```xml
 <dependency>
     <groupId>io.carbonintensity</groupId>
-    <artifactId>scheduler-spring-boot-starter</artifactId>
+    <artifactId>green-scheduler-spring-boot-starter</artifactId>
     <version>0.8.1</version>
 </dependency>
 ```
@@ -54,10 +50,8 @@ or the following for a Quarkus-based project:
 In the application.yaml add the following config including the [API key](#requesting-an-api-key):
 
 ```yaml
-greenScheduled:
+green-scheduler:
   api-key: { CARBONINTENSITY_API_KEY }
-  api-url: https://api.carbonintensity.io
-  enabled: true
 ```
 
 Then apply the `@GreenScheduled` annotation on the to be scheduled method. For an example annotation see the [spring-boot-demo](https://github.com/carbonintensityio/green-scheduling-spring-boot-demo) 
@@ -66,11 +60,9 @@ Then apply the `@GreenScheduled` annotation on the to be scheduled method. For a
 There are 2 types of schedulers: fixed and successive.
 
 #### Fixed
-
 A scheduler in starting each day in the configured fixed window, where the actual start-time is calculated using the carbon intensity on the set `carbonIntensityZone` and the configured estimated `duration` of the job. Optionally, a `timeZone` can be configured in the annotation to specify in which timezone the start and end-time of the `fixedWindow` are. When no timezone is configured, it will default to the system-default timezone. Note that if the application is redeployed during this window, it might run again.
 
 Using the "regular" scheduler:
-
 ```java
 
 @Scheduled(cron = "0 0 9 * * ?", zone = "Europe/Amsterdam")
@@ -89,11 +81,9 @@ public void greenFixedWindowJob() {
 ```
 
 #### Fixed on a specific day
-
 The green scheduler can also run on a specific day. These days have the same notation as the fields day-of-Month and day-of-Week in a cron expression (Quartz implementation) and can not be used at the same time.  
 
 Using the "regular" scheduler:
-
 ```java
 
 @Scheduled(cron = "0 0 9 ? * MON", zone = "Europe/Amsterdam")
@@ -109,7 +99,6 @@ public void runAt9AMFirstOfMonth() {
 ```
 
 Using the green scheduler:
-
 ```java
 
 @GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam", dayOfWeek= "MON")
@@ -124,7 +113,6 @@ public void greenFixedWindowJobFirstMonth() {
 ```
 
 #### Successive (experimental)
-
 A scheduler starting at the lowest carbon intensity for the `carbonIntensityZone` within the configured gaps, keeping in mind the `duration` and `carbonIntensityZone` while calculating the optimal starting time of the job.
 
 Using the "regular" scheduler to run a process every 3 hours:
@@ -146,28 +134,11 @@ public void greenSuccessiveWindowJob() {
 ```
 
 ### Requesting an API key
-
 Visit the [carbonintensity.io](https://carbonintensity.io) homepage to get an API key for the scheduler.
 
 ### Supported zones
 Currently only the Netherlands (NL) is supported but more zones will follow.
 
-### Custom CarbonIntensity Api
-
-If you'd like to integrate your own carbon intensity data source, you can provide a custom implementation of the `CarbonIntensityApi` interface. This is useful if you're pulling data from a private endpoint, a different region, or using a simulated source for testing.
-
-You can inject your custom implementation in one of two ways:
-
-1. As a Spring Bean or Quarkus CDI Injection
-2. Manually via `SchedulerConfig` 
-
-```java
-CarbonIntensityApi customApi = new MyCustomCarbonIntensityApi(); // your class
-SchedulerConfig schedulerConfig = new SchedulerConfig();
-schedulerConfig.setCarbonIntensityApi(customApi);
-```
-
 ## Acknowledgements
-
 The maven project structure and all documentation regarding contribution is adapted from
 what the [Quarkus](https://github.com/quarkusio/quarkus) community has created. Further acknowledgements can be found in the [NOTICE](NOTICE) file
