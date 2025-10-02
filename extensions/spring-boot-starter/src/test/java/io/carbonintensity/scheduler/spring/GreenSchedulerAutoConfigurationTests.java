@@ -16,7 +16,7 @@ import io.carbonintensity.scheduler.Scheduler;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 import io.carbonintensity.scheduler.spring.factory.SchedulerConfigBuilder;
 
-class GreenScheduledAutoConfigurationTests {
+class GreenSchedulerAutoConfigurationTests {
 
     ApplicationContextRunner contextRunner;
 
@@ -28,10 +28,10 @@ class GreenScheduledAutoConfigurationTests {
     @Test
     void givenDefaultConfiguration_thenCreateScheduler() {
         this.contextRunner
-                .withConfiguration(AutoConfigurations.of(GreenScheduledAutoConfiguration.class))
+                .withConfiguration(AutoConfigurations.of(GreenSchedulerAutoConfiguration.class))
                 .run(context -> assertThat(context)
                         .hasSingleBean(Scheduler.class)
-                        .getBean("greenScheduled", Scheduler.class).isNotNull());
+                        .getBean("green-scheduler", Scheduler.class).isNotNull());
     }
 
     @Test
@@ -45,7 +45,7 @@ class GreenScheduledAutoConfigurationTests {
     void givenProperties_whenEnabled_thenCreateScheduler() {
         this.contextRunner
                 .withUserConfiguration(EmptyConfiguration.class)
-                .withPropertyValues("greenscheduled.enabled=true")
+                .withPropertyValues("green-scheduler.enabled=true")
                 .run(context -> assertThat(context).hasSingleBean(Scheduler.class));
     }
 
@@ -53,7 +53,7 @@ class GreenScheduledAutoConfigurationTests {
     void givenProperties_whenDisabled_thenDontCreateScheduler() {
         this.contextRunner
                 .withUserConfiguration(EmptyConfiguration.class)
-                .withPropertyValues("greenscheduled.enabled=false")
+                .withPropertyValues("green-scheduler.enabled=false")
                 .run(context -> assertThat(context).doesNotHaveBean(Scheduler.class));
     }
 

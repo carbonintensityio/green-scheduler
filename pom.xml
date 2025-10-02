@@ -6,17 +6,17 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.carbonintensity</groupId>
-        <artifactId>scheduler-parent</artifactId>
+        <artifactId>green-scheduler-parent</artifactId>
         <version>${revision}</version>
         <relativePath>support-projects/parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>scheduler-project</artifactId>
-    <name>Scheduler - Project POM</name>
+    <artifactId>green-scheduler-project</artifactId>
+    <name>Green Scheduler - Project POM</name>
     <packaging>pom</packaging>
 
-    <description>Carbon Intensity Scheduler - Java task scheduler based on carbon intensity</description>
-    <url>https://github.com/carbonintensityio/scheduler</url>
+    <description>Green Scheduler - Java task scheduler based on carbon intensity</description>
+    <url>https://github.com/carbonintensityio/green-scheduler</url>
 
     <developers>
         <developer>
@@ -38,15 +38,15 @@
     <scm child.scm.connection.inherit.append.path="false"
          child.scm.developerConnection.inherit.append.path="false"
          child.scm.url.inherit.append.path="false">
-        <url>https://github.com/carbonintensityio/scheduler</url>
-        <connection>scm:git:git@github.com:carbonintensityio/scheduler.git</connection>
-        <developerConnection>scm:git:git@github.com:carbonintensityio/scheduler.git</developerConnection>
+        <url>https://github.com/carbonintensityio/green-scheduler</url>
+        <connection>scm:git:git@github.com:carbonintensityio/green-scheduler.git</connection>
+        <developerConnection>scm:git:git@github.com:carbonintensityio/green-scheduler.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/carbonintensityio/scheduler/issues/</url>
+        <url>https://github.com/carbonintensityio/green-scheduler/issues/</url>
     </issueManagement>
 
     <properties>

@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.carbonintensity</groupId>
-        <artifactId>scheduler-project</artifactId>
+        <artifactId>green-scheduler-project</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>scheduler-build-parent</artifactId>
-    <name>Scheduler - Build Parent</name>
+    <artifactId>green-scheduler-build-parent</artifactId>
+    <name>Green Scheduler - Build Parent</name>
     <description>Build parent to bring in required dependencies</description>
     <packaging>pom</packaging>
 
@@ -35,7 +35,7 @@
         <dependencies>
             <dependency>
                 <groupId>io.carbonintensity</groupId>
-                <artifactId>scheduler-bom</artifactId>
+                <artifactId>green-scheduler-bom</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>

@@ -4,10 +4,10 @@
          child.project.url.inherit.append.path="false">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.carbonintensity</groupId>
-    <artifactId>scheduler-parent</artifactId>
+    <artifactId>green-scheduler-parent</artifactId>
     <version>${revision}</version>
 
-    <name>Scheduler - Parent POM</name>
+    <name>Green Scheduler - Parent POM</name>
     <description>Scheduler Parent POM</description>
     <url>https://carbonintensity.io</url>
 
@@ -93,7 +93,7 @@
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/carbonintensityio/scheduler/issues</url>
+        <url>https://github.com/carbonintensityio/green-scheduler/issues</url>
     </issueManagement>
 
     <developers>
@@ -106,21 +106,23 @@
     <scm child.scm.connection.inherit.append.path="false"
          child.scm.developerConnection.inherit.append.path="false"
          child.scm.url.inherit.append.path="false">
-        <connection>scm:git:git@github.com:carbonintensityio/scheduler.git</connection>
-        <developerConnection>scm:git:git@github.com:carbonintensity/scheduler.git</developerConnection>
-        <url>https://github.com/carbonintensity/scheduler</url>
+        <connection>scm:git:git@github.com:carbonintensityio/green-scheduler.git</connection>
+        <developerConnection>scm:git:git@github.com:carbonintensity/green-scheduler.git</developerConnection>
+        <url>https://github.com/carbonintensity/green-scheduler</url>
         <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <url>https://repo.first8.nl/repository/maven-snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>releases</id>
-            <url>https://repo.first8.nl/repository/maven-releases</url>
+            <id>carbonintensity-publish</id>
+            <name>Carbon Intensity Releases</name>
+            <url>https://repo.maven.apache.org/maven2</url>
         </repository>
+        <snapshotRepository>
+            <id>carbonintensity-publish</id>
+            <name>Carbon Intensity Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <build>

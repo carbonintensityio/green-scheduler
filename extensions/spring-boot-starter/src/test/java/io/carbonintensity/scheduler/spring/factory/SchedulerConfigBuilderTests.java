@@ -1,10 +1,10 @@
 package io.carbonintensity.scheduler.spring.factory;
 
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.DEFAULT_API_URL;
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.DEFAULT_OVERDUE_GRACE_PERIOD;
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.DEFAULT_SHUTDOWN_GRACE_PERIOD;
-import static io.carbonintensity.scheduler.spring.GreenScheduledProperties.DEFAULT_START_MODE;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_API_URL;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_OVERDUE_GRACE_PERIOD;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_SHUTDOWN_GRACE_PERIOD;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_START_MODE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;

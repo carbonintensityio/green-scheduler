@@ -7,16 +7,16 @@ import java.lang.reflect.Method;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class GreenScheduledBeanProcessorTests {
+class GreenSchedulerBeanProcessorTests {
 
     final String beanName = "testBean";
     final Object bean = new TestScheduledJob();
-    GreenScheduledBeanProcessor beanProcessor;
+    GreenSchedulerBeanProcessor beanProcessor;
     Method runMethod;
 
     @BeforeEach
     void setup() throws NoSuchMethodException {
-        beanProcessor = new GreenScheduledBeanProcessor();
+        beanProcessor = new GreenSchedulerBeanProcessor();
         runMethod = TestScheduledJob.class.getMethod("run");
     }
 
@@ -28,7 +28,7 @@ class GreenScheduledBeanProcessorTests {
                 .hasSize(1)
                 .first()
                 .usingRecursiveAssertion()
-                .isEqualTo(new GreenScheduledBeanInfo(bean, runMethod));
+                .isEqualTo(new GreenSchedulerBeanInfo(bean, runMethod));
     }
 
     @Test
@@ -40,7 +40,7 @@ class GreenScheduledBeanProcessorTests {
                 .hasSize(1)
                 .first()
                 .usingRecursiveComparison()
-                .isEqualTo(new GreenScheduledBeanInfo(bean, runMethod));
+                .isEqualTo(new GreenSchedulerBeanInfo(bean, runMethod));
     }
 
     @Test
