@@ -432,7 +432,7 @@ public class SchedulerProcessor {
                 }
 
             }
-            // Validate the time zone ID
+            // Validate the time carbonIntensityZone ID
             AnnotationValue timeZoneValue = schedule.value("timeZone");
             if (timeZoneValue != null) {
                 String timeZone = timeZoneValue.asString();

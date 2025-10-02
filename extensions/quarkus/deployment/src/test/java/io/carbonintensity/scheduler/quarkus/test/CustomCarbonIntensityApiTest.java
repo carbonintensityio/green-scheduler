@@ -36,7 +36,7 @@ public class CustomCarbonIntensityApiTest {
     }
 
     static class Jobs {
-        @GreenScheduled(identity = "test", successive = "1S 4S 5S", duration = "PT30M", zone = "NL")
+        @GreenScheduled(identity = "test", successive = "1S 4S 5S", duration = "PT30M", carbonIntensityZone = "NL")
         void ping() {
         }
 

@@ -46,7 +46,7 @@ class TestFallbackProgrammatic {
                 .setDuration(Duration.ofSeconds(3))
                 .setMinimumGap(Duration.ofSeconds(1))
                 .setMaximumGap(Duration.ofSeconds(1))
-                .setZone("NL")
+                .setCarbonIntensityZone("NL")
                 .setTask(se -> {
                     task(se, cdl, 3);
                 })
@@ -74,7 +74,7 @@ class TestFallbackProgrammatic {
                 .setDuration(Duration.ofSeconds(5))
                 .setMinimumGap(Duration.ofSeconds(1))
                 .setMaximumGap(Duration.ofSeconds(1))
-                .setZone("NL")
+                .setCarbonIntensityZone("NL")
                 .setTask(se -> {
                     task(se, cdl, 5);
                 })

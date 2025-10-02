@@ -162,7 +162,7 @@ public interface Scheduler {
         JobDefinition setDuration(Duration duration);
 
         /**
-         * Defines the zone for fetching carbon intensity data to use when scheduling.
+         * Defines the carbonIntensityZone for fetching carbon intensity data to use when scheduling.
          * <p>
          * The value are case-insensitive and format depends on the
          * {@link CarbonIntensityPlanner}.
@@ -172,9 +172,9 @@ public interface Scheduler {
          * ZoneId from <a href="https://carbonintensity.io">cabonintensity.io</a>; e.g. NL
          *
          * @return self
-         * @see GreenScheduled#zone()
+         * @see GreenScheduled#carbonIntensityZone()
          */
-        JobDefinition setZone(String zone);
+        JobDefinition setCarbonIntensityZone(String carbonIntensityZone);
 
         /**
          *

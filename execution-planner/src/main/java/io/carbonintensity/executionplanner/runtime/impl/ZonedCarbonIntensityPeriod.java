@@ -15,7 +15,7 @@ public class ZonedCarbonIntensityPeriod {
     private ZonedCarbonIntensityPeriod(Builder builder) {
         this.startTime = builder.startTime;
         this.endTime = builder.endTime;
-        this.zone = builder.zone;
+        this.zone = builder.carbonIntensityZone;
     }
 
     public ZonedDateTime getStartTime() {
@@ -43,7 +43,7 @@ public class ZonedCarbonIntensityPeriod {
 
         private ZonedDateTime startTime;
         private ZonedDateTime endTime;
-        private String zone;
+        private String carbonIntensityZone;
 
         public Builder withStartTime(ZonedDateTime startTime) {
             this.startTime = startTime;
@@ -55,15 +55,15 @@ public class ZonedCarbonIntensityPeriod {
             return this;
         }
 
-        public Builder withZone(String zone) {
-            this.zone = zone;
+        public Builder withCarbonIntensityZone(String carbonIntensityZone) {
+            this.carbonIntensityZone = carbonIntensityZone;
             return this;
         }
 
         public ZonedCarbonIntensityPeriod build() {
             Objects.requireNonNull(startTime, "startTime is required");
             Objects.requireNonNull(endTime, "endTime is required");
-            Objects.requireNonNull(zone, "zoneId is required");
+            Objects.requireNonNull(carbonIntensityZone, "zoneId is required");
             return new ZonedCarbonIntensityPeriod(this);
         }
     }

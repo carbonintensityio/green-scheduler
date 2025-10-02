@@ -20,7 +20,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
 
     private final String identity;
     private final Duration duration;
-    private final String zone;
+    private final String carbonIntensityZone;
     private final ZonedDateTime startTime;
     private final ZonedDateTime endTime;
     private final Cron fallbackCronExpression;
@@ -29,7 +29,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
 
     public DefaultFixedWindowPlanningConstraints(String identity,
             Duration duration,
-            String zone,
+            String carbonIntensityZone,
             ZonedDateTime startTime,
             ZonedDateTime endTime,
             Cron fallbackCronExpression,
@@ -37,7 +37,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
             Cron cronExpression) {
         this.identity = identity;
         this.duration = duration;
-        this.zone = zone;
+        this.carbonIntensityZone = carbonIntensityZone;
         this.cronExpression = cronExpression;
         int delayDays = 0;
         if (!checkStartTime(startTime, cronExpression)) {
@@ -60,8 +60,8 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
     }
 
     @Override
-    public String getZone() {
-        return zone;
+    public String getCarbonIntensityZone() {
+        return carbonIntensityZone;
     }
 
     @Override
@@ -97,7 +97,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
         return new DefaultFixedWindowPlanningConstraints.Builder()
                 .withIdentity(constraints.getIdentity())
                 .withDuration(constraints.getDuration())
-                .withZone(constraints.getZone())
+                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
                 .withCronExpression(constraints.getCronExpression())
                 .withStartAndEnd(constraints.getStart(), constraints.getEnd())
                 .withFallbackCronExpression(constraints.getFallbackCronExpression())
@@ -129,7 +129,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
     public static final class Builder {
         private String identity;
         private Duration duration;
-        private String zone;
+        private String carbonIntensityZone;
         private ZonedDateTime startTime;
         private ZonedDateTime endTime;
         private Cron fallbackCronExpression;
@@ -154,8 +154,8 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
             return this;
         }
 
-        public Builder withZone(String zone) {
-            this.zone = zone;
+        public Builder withCarbonIntensityZone(String carbonIntensityZone) {
+            this.carbonIntensityZone = carbonIntensityZone;
             return this;
         }
 
@@ -180,7 +180,7 @@ public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningCo
         }
 
         public DefaultFixedWindowPlanningConstraints build() {
-            return new DefaultFixedWindowPlanningConstraints(identity, duration, zone, startTime, endTime,
+            return new DefaultFixedWindowPlanningConstraints(identity, duration, carbonIntensityZone, startTime, endTime,
                     fallbackCronExpression, timeZoneId, cronExpression);
         }
 

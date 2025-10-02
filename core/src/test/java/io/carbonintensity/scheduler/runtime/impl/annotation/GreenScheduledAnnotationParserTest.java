@@ -24,7 +24,7 @@ class GreenScheduledAnnotationParserTest {
                 .fixedWindow("9:30 11:45")
                 .timeZone("Europe/Amsterdam")
                 .duration("15m")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .build();
 
         PlanningConstraints constraints = GreenScheduledAnnotationParser.createConstraints("testJob", annotation,
@@ -33,7 +33,7 @@ class GreenScheduledAnnotationParserTest {
         assertThat(constraints).isInstanceOf(DefaultFixedWindowPlanningConstraints.class);
         DefaultFixedWindowPlanningConstraints fixedConstraints = (DefaultFixedWindowPlanningConstraints) constraints;
         assertThat(fixedConstraints.getDuration()).isEqualTo(Duration.ofMinutes(15));
-        assertThat(fixedConstraints.getZone()).isEqualTo("NL");
+        assertThat(fixedConstraints.getCarbonIntensityZone()).isEqualTo("NL");
     }
 
     @Test
@@ -41,7 +41,7 @@ class GreenScheduledAnnotationParserTest {
         GreenScheduled annotation = AnnotationUtil.newGreenScheduled()
                 .successive("0h 2h 6h")
                 .duration("30m")
-                .zone("US")
+                .carbonIntensityZone("US")
                 .build();
         ZonedDateTime now = ZonedDateTime.now();
         Clock clock = Clock.fixed(now.toInstant(),
@@ -56,13 +56,13 @@ class GreenScheduledAnnotationParserTest {
         assertThat(successiveConstraints.getMinimumGap()).isEqualTo(Duration.ofHours(2));
         assertThat(successiveConstraints.getMaximumGap()).isEqualTo(Duration.ofHours(6));
         assertThat(successiveConstraints.getDuration()).isEqualTo(Duration.ofMinutes(30));
-        assertThat(successiveConstraints.getZone()).isEqualTo("US");
+        assertThat(successiveConstraints.getCarbonIntensityZone()).isEqualTo("US");
     }
 
     @Test
     void shouldThrowExceptionWhenNeitherFixedWindowNorSuccessiveIsPresent() {
         GreenScheduled annotation = AnnotationUtil.newGreenScheduled()
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .build();
 
         assertThatThrownBy(() -> GreenScheduledAnnotationParser.createConstraints("testJob", annotation, null))
@@ -74,7 +74,7 @@ class GreenScheduledAnnotationParserTest {
     @Test
     void shouldParseOverdueGracePeriodCorrectly() {
         GreenScheduled annotation = AnnotationUtil.newGreenScheduled()
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .overdueGracePeriod("PT10M")
                 .build();
 
@@ -85,7 +85,7 @@ class GreenScheduledAnnotationParserTest {
     @Test
     void shouldReturnDefaultGracePeriodWhenNotSet() {
         GreenScheduled annotation = AnnotationUtil.newGreenScheduled()
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .build();
 
         Duration gracePeriod = GreenScheduledAnnotationParser.parseOverdueGracePeriod(annotation, Duration.ofMinutes(5));
@@ -96,7 +96,7 @@ class GreenScheduledAnnotationParserTest {
     void shouldThrowExceptionForInvalidOverdueGracePeriod() {
         GreenScheduled annotation = AnnotationUtil.newGreenScheduled()
                 .overdueGracePeriod("invalid")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .build();
         Duration duration = Duration.ofMinutes(5);
 

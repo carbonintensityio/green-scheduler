@@ -74,9 +74,9 @@ public abstract class AbstractJobDefinition implements JobDefinition {
     }
 
     @Override
-    public JobDefinition setZone(String zone) {
+    public JobDefinition setCarbonIntensityZone(String carbonIntensityZone) {
         checkScheduled();
-        this.zone = Objects.requireNonNull(zone);
+        this.zone = Objects.requireNonNull(carbonIntensityZone);
         return this;
     }
 

@@ -617,7 +617,7 @@ public class SimpleScheduler implements Scheduler {
         }
 
         /**
-         * @param now The current date-time in the default time zone
+         * @param now The current date-time in the default time carbonIntensityZone
          * @return the scheduled time if fired, {@code null} otherwise
          */
         abstract ZonedDateTime evaluate(ZonedDateTime now);
@@ -955,7 +955,7 @@ public class SimpleScheduler implements Scheduler {
                             .withMinimumGap(minimumGap)
                             .withMaximumGap(maximumGap)
                             .withDuration(duration)
-                            .withZone(zone)
+                            .withCarbonIntensityZone(zone)
                             .build());
             invoker = initInvoker(invoker, events, concurrentExecution, skipPredicate, jobInstrumenter);
             ScheduledTask scheduledTask = new ScheduledTask(trigger, invoker, true);

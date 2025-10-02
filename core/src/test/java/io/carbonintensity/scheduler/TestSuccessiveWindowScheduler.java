@@ -72,7 +72,7 @@ class TestSuccessiveWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .successive("12h 4h 12h")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("1h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")
@@ -145,7 +145,7 @@ class TestSuccessiveWindowScheduler {
 
         GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
                 .successive("12h 4h 12h")
-                .zone("NL")
+                .carbonIntensityZone("NL")
                 .duration("1h")
                 .identity("test")
                 .overdueGracePeriod("PT90S")

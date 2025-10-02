@@ -21,7 +21,7 @@ import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityJson
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 
 /**
- * This implementation gets data from file system. Each zone has a directory with dataset
+ * This implementation gets data from file system. Each carbonIntensityZone has a directory with dataset
  * for each timezone.
  */
 public class CarbonIntensityFileApi implements CarbonIntensityApi {
@@ -42,7 +42,7 @@ public class CarbonIntensityFileApi implements CarbonIntensityApi {
     public CompletableFuture<CarbonIntensity> getCarbonIntensity(ZonedCarbonIntensityPeriod zonedPeriod) {
         var zone = zonedPeriod.getZone().toLowerCase();
         var timezone = getTimezone(zonedPeriod.getStartTime());
-        logger.debug("Getting fallback data for zone {} and timezone {}", zone, timezone);
+        logger.debug("Getting fallback data for carbonIntensityZone {} and timezone {}", zone, timezone);
 
         try {
             var resource = getJsonFileUrl(zone, timezone);
@@ -85,7 +85,7 @@ public class CarbonIntensityFileApi implements CarbonIntensityApi {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElseThrow(() -> new IOException(
-                        "No matching file found for zone [" + zone + "] and timezone [" + timezone + "]"));
+                        "No matching file found for carbonIntensityZone [" + zone + "] and timezone [" + timezone + "]"));
     }
 
     private URL getResource(String resourceName) {
