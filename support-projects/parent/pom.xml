@@ -44,7 +44,7 @@
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.versions.plugin>2.15.0</version.versions.plugin>
         <version.yaml-properties.plugin>1.1.3</version.yaml-properties.plugin>
-        <version.flatten.plugin>1.7.0</version.flatten.plugin>
+        <version.flatten.plugin>1.7.3</version.flatten.plugin>
 
         <!-- Code format -->
         <format.skip>false</format.skip>
