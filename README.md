@@ -27,8 +27,6 @@ The scheduler is tested with Spring, Spring Boot and Quarkus for the NL (Netherl
 The build instructions are available in the [contribution guide](CONTRIBUTING.md).
 
 ## Usage
-Currently, the carbon intensity aware scheduling is not published yet. To use the scheduler see [How to build](#how-to-build) on how to install the package locally.
-
 Add the following dependency to the pom for a Spring Boot based project:
 ```xml
 <dependency>
