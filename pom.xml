@@ -51,7 +51,7 @@
 
     <properties>
         <maven-enforcer-plugin.phase>validate</maven-enforcer-plugin.phase>
-        <owasp-dependency-check-plugin.version>12.1.1</owasp-dependency-check-plugin.version>
+        <owasp-dependency-check-plugin.version>12.1.6</owasp-dependency-check-plugin.version>
         <jacoco.version>0.8.13</jacoco.version>
     </properties>
 
