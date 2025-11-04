@@ -21,7 +21,7 @@ import io.quarkus.runtime.Startup;
 
 @Singleton
 @Startup
-public class QuarkusScheduler {
+public class QuarkusScheduler implements AutoCloseable {
 
     private static final Logger LOG = Logger.getLogger(QuarkusScheduler.class);
 
@@ -44,9 +44,10 @@ public class QuarkusScheduler {
     }
 
     @PreDestroy
-    void stop() {
-        LOG.info("Stopping Green Scheduler");
-        greenScheduler.stop();
+    @Override
+    public void close() {
+        LOG.info("Closing Green Scheduler");
+        greenScheduler.close();
     }
 
     GreenScheduled lookupConfiguration(GreenScheduled scheduled) {
