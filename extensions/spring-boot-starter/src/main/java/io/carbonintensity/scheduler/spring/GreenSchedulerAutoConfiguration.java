@@ -95,10 +95,10 @@ public class GreenSchedulerAutoConfiguration {
     }
 
     @PreDestroy
-    public void stopScheduler() {
+    public void closeScheduler() {
         if (simpleScheduler != null) {
-            logger.info("Stopping the green scheduler.");
-            simpleScheduler.stop();
+            logger.info("Closing the green scheduler.");
+            simpleScheduler.close();
         }
     }
 }
