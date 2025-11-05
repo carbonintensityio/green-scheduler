@@ -61,7 +61,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: 'v${{ steps.metadata.outputs.current-version }}'
+          name: 'v${{ steps.metadata.outputs.current-version }}'
           make_latest: true
-          generate_release_notes: 'v${{ steps.metadata.outputs.current-version }}'
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
