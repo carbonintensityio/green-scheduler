@@ -52,7 +52,7 @@ class TestSuccessiveWindowScheduler {
     @AfterEach
     public void afterEach() {
         if (scheduler != null) {
-            scheduler.stop();
+            scheduler.close();
         }
     }
 

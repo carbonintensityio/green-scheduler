@@ -93,13 +93,13 @@ import io.carbonintensity.scheduler.spi.JobInstrumenter;
  * The scheduler should be properly shut down to release resources:
  *
  * <pre>{@code
- * scheduler.stop();
+ * scheduler.close();
  * }</pre>
  * </p>
  *
  * @see Scheduler
  */
-public class SimpleScheduler implements Scheduler {
+public class SimpleScheduler implements Scheduler, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(SimpleScheduler.class);
     // milliseconds
@@ -249,7 +249,8 @@ public class SimpleScheduler implements Scheduler {
         }
     }
 
-    public void stop() {
+    @Override
+    public void close() {
         log.info("Shutting down simple scheduler gracefully.");
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);

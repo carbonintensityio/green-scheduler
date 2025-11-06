@@ -35,7 +35,7 @@ class TestDefaultCarbonIntensityProgrammatic {
 
     @AfterEach
     public void afterEach() {
-        scheduler.stop();
+        scheduler.close();
     }
 
     @Test
