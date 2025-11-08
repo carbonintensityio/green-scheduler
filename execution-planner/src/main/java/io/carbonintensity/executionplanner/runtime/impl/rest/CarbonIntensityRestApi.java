@@ -19,12 +19,12 @@ import io.carbonintensity.executionplanner.runtime.impl.ZonedCarbonIntensityPeri
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 
 /**
- * Rest client for fetching prediction data from remote end point.
+ * Rest client for fetching prediction data from a remote end point.
  */
 public class CarbonIntensityRestApi implements CarbonIntensityApi {
 
     /**
-     * Endpoint url format: {baseUrl}/api/carbonintensity/zone/{zone}/{date}/{apitype}?tz={timeZone}
+     * Endpoint url format: {baseUrl}/api/carbonintensity/zone/{zone}/{date}/{apiType}?tz={timeZone}
      */
     private static final String ENDPOINT_TEMPLATE = "%s/api/carbonintensity/zone/%s/%s/%s?tz=%s";
     private static final Logger logger = LoggerFactory.getLogger(CarbonIntensityRestApi.class);

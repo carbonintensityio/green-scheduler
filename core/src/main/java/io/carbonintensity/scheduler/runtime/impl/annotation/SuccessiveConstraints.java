@@ -3,7 +3,7 @@ package io.carbonintensity.scheduler.runtime.impl.annotation;
 import java.time.Duration;
 
 /**
- * Represents the constraints of a successive scheduler
+ * Represents the constraints of a successive scheduler.
  */
 public class SuccessiveConstraints {
 

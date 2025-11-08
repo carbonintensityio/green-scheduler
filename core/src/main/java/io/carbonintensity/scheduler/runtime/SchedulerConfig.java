@@ -46,7 +46,7 @@ public class SchedulerConfig {
     private Clock clock = Clock.systemDefaultZone();
 
     /**
-     * Scheduled task will be flagged as overdue if next execution time is exceeded by this period.
+     * Scheduled task will be flagged as overdue if the next execution time is exceeded by this period.
      */
     private Duration overdueGracePeriod = SchedulerDefaults.DEFAULT_OVERDUE_GRACE_PERIOD;
 

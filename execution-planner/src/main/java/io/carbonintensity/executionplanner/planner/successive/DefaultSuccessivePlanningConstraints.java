@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 
 /**
- * Data class containing the constraints that are used by {@link SuccessivePlanner} to plan the best window
+ * Data class containing the constraints that are used by {@link SuccessivePlanner} to plan the best window.
  */
 public class DefaultSuccessivePlanningConstraints
         implements SuccessivePlanningConstraints {

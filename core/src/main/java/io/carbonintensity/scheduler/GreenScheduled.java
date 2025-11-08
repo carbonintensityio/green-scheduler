@@ -46,7 +46,7 @@ public @interface GreenScheduled {
     /**
      * Optionally defines a unique identifier for this job.
      * <p>
-     * If the value is not provided then a unique id is generated.
+     * If the value is not provided, then a unique id is generated.
      *
      * @return the unique identity of the schedule
      */
@@ -61,7 +61,7 @@ public @interface GreenScheduled {
      * &lt;Time: start time&gt; &lt;Time: end time&gt;
      * </pre>
      *
-     * For example: 9:30 11:45
+     * For example, 9:30 11:45
      *
      * Requires duration to be configured
      */
@@ -144,7 +144,7 @@ public @interface GreenScheduled {
     /**
      * Defines the carbonIntensityZone for fetching carbon intensity data to use when scheduling.
      * <p>
-     * The value are case-insensitive and format depends on the
+     * The value is case-insensitive and the format depends on the
      * {@link CarbonIntensityPlanner}.
      * <p>
      * The default scheduler supports the following options:

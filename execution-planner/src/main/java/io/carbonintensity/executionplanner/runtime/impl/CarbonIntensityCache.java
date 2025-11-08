@@ -17,14 +17,14 @@ public class CarbonIntensityCache {
     private final Cache<Key, CarbonIntensity> caffeine;
 
     /**
-     * Creates cache with default TTL for empty values.
+     * Creates the cache with a default TTL for empty values.
      */
     public CarbonIntensityCache() {
         this(DEFAULT_TTL_EMPTY_VALUES);
     }
 
     /**
-     * Creates cache with given TTL for empty values.
+     * Creates the cache with given TTL for empty values.
      *
      * @param emptyValueTTL Time to live for empty values.
      */

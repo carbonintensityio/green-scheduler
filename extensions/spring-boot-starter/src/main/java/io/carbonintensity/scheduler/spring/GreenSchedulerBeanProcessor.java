@@ -23,10 +23,10 @@ public final class GreenSchedulerBeanProcessor implements BeanPostProcessor, Ite
     private final Map<String, GreenSchedulerBeanInfo> scheduledBeanInfoMap = Collections.synchronizedMap(new HashMap<>());
 
     /**
-     * Checks if given method has {@link GreenScheduled} annotation
+     * Checks if the given method has {@link GreenScheduled} annotation
      *
      * @param method spring method
-     * @return true if method has at least one annotation
+     * @return true if the method has at least one annotation
      */
     static boolean isScheduledMethod(Method method) {
         var annotations = AnnotationUtils.findAnnotation(method, GreenScheduled.class);

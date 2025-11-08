@@ -12,7 +12,7 @@ import com.cronutils.model.Cron;
 import com.cronutils.model.time.ExecutionTime;
 
 /**
- * Data class containing the constraints that are used by {@link FixedWindowPlanner} to plan the best window
+ * Data class containing the constraints that are used by {@link FixedWindowPlanner} to plan the best window.
  */
 public class DefaultFixedWindowPlanningConstraints extends FixedWindowPlanningConstraints {
 

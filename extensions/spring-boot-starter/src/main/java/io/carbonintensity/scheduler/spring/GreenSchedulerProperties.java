@@ -88,7 +88,7 @@ public class GreenSchedulerProperties {
     }
 
     /**
-     * Gets number of concurrent jobs.
+     * Gets the number of concurrent jobs.
      *
      * @return number of available executors
      */
@@ -97,7 +97,7 @@ public class GreenSchedulerProperties {
     }
 
     /**
-     * Gets overdue grace period.
+     * Gets the overdue grace period.
      *
      * @return overdue period
      */

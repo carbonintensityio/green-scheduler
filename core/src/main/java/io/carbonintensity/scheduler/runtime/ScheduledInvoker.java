@@ -12,9 +12,10 @@ import io.carbonintensity.scheduler.ScheduledExecution;
 public interface ScheduledInvoker {
 
     /**
-     * @param execution
+     * @param execution the execution to invoke
+     *
      * @return the result
-     * @throws Exception
+     * @throws Exception when the invocation fails
      */
     CompletionStage<Void> invoke(ScheduledExecution execution) throws Exception;
 }
