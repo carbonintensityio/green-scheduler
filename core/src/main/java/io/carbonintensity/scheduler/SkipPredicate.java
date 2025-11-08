@@ -3,7 +3,7 @@ package io.carbonintensity.scheduler;
 public interface SkipPredicate {
 
     /**
-     * @param execution
+     * @param execution metadata of a specific scheduled job
      * @return {@code true} if the given execution should be skipped, {@code false} otherwise
      */
     boolean test(ScheduledExecution execution);

@@ -9,12 +9,12 @@ package io.carbonintensity.scheduler;
 public enum ConcurrentExecution {
 
     /**
-     * The scheduled method can be executed concurrently, i.e. it is executed every time the trigger is fired.
+     * The scheduled method can be executed concurrently, i.e., it is executed every time the trigger is fired.
      */
     PROCEED,
 
     /**
-     * The scheduled method is never executed concurrently, i.e. a method execution is skipped until the previous
+     * The scheduled method is never executed concurrently, i.e., a method execution is skipped until the previous
      * invocation completes.
      */
     SKIP,

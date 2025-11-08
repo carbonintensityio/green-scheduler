@@ -25,7 +25,8 @@ public class MethodScheduledInvoker implements ScheduledInvoker {
      * Invokes spring bean method.
      *
      * @param scheduledExecution execution context
-     * @return CompletionStage with null value when method has been invoked successfully otherwise returns caught exception.
+     * @return CompletionStage with null value when the method has been invoked successfully otherwise returns a caught
+     *         exception.
      */
     @Override
     public CompletionStage<Void> invoke(ScheduledExecution scheduledExecution) {

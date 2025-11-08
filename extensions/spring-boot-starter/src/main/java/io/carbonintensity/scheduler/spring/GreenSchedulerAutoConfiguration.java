@@ -28,8 +28,8 @@ import io.carbonintensity.scheduler.spring.factory.SpringSchedulerFactory;
  * Green Scheduler Spring {@link AutoConfiguration}.
  *
  * <p>
- * This scheduler is by default, enabled and scans all spring managed beans for {@link GreenScheduled} annotations. Scheduler
- * can be configured using spring java configuration exposing {@link SchedulerConfig} as bean or by properties class or property
+ * This scheduler is by default, enabled and scans all Spring-managed beans for {@link GreenScheduled} annotations. Scheduler
+ * can be configured using Spring Java configuration exposing {@link SchedulerConfig} as bean or by properties class or property
  * values. See {@link GreenSchedulerProperties}.
  *
  * <p>

@@ -910,14 +910,14 @@ public class SimpleScheduler implements Scheduler {
      *
      * <p>
      * The {@code SimpleJobDefinition} extends {@link AbstractJobDefinition} and allows for
-     * scheduling a job based on configurable time constraints such as minimum and maximum
+     * scheduling a job based on configurable time constraints such as the minimum and maximum
      * gap between executions, as well as the overall duration. It ensures that tasks are
-     * executed based on these constraints, and handles task invocations and failures.
+     * executed based on these constraints and handles task invocations and failures.
      * </p>
      *
      * <p>
      * The {@code schedule} method is responsible for configuring the task to be executed
-     * and ensuring that the constraints are met. If any validation fails (e.g., task is not set
+     * and ensuring that the constraints are met. If any validation fails (e.g., the task is not set
      * or gaps are not correctly defined), an {@link IllegalStateException} is thrown.
      * </p>
      *
