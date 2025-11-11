@@ -21,7 +21,7 @@ import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityJson
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 
 /**
- * This implementation gets data from file system. Each carbonIntensityZone has a directory with dataset
+ * This implementation gets data from the file system. Each carbonIntensityZone has a directory with a dataset
  * for each timezone.
  */
 public class CarbonIntensityFileApi implements CarbonIntensityApi {

@@ -9,7 +9,7 @@ import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 public interface SchedulerFactory {
 
     /**
-     * Create new scheduler.
+     * Create a new scheduler.
      *
      * @param schedulerConfig scheduler config
      * @return new instance of {@link Scheduler}.

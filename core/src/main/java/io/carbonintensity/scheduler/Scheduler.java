@@ -19,7 +19,7 @@ public interface Scheduler {
     /**
      * Pause a specific job. Identity must not be null and non-existent identity results in no-op.
      *
-     * @param identity
+     * @param identity unique identifier for the job to pause
      * @see GreenScheduled#identity()
      */
     void pause(String identity);
@@ -32,7 +32,7 @@ public interface Scheduler {
     /**
      * Resume a specific job. Identity must not be null and non-existent identity results in no-op.
      *
-     * @param identity
+     * @param identity unique identifier for the job to resume
      * @see GreenScheduled#identity()
      */
     void resume(String identity);
@@ -40,10 +40,10 @@ public interface Scheduler {
     /**
      * Identity must not be null and {@code false} is returned for non-existent identity.
      * <p>
-     * Note that this method only returns {@code true} if the job was explicitly paused. I.e. it does not reflect a paused
+     * Note that this method only returns {@code true} if the job was explicitly paused. I.e., it does not reflect a paused
      * scheduler.
      *
-     * @param identity
+     * @param identity unique identifier for the job to check
      * @return {@code true} if the job with the given identity is paused, {@code false} otherwise
      * @see GreenScheduled#identity()
      * @see #pause(String)
@@ -51,7 +51,7 @@ public interface Scheduler {
     boolean isPaused(String identity);
 
     /**
-     * @return {@code true} if a scheduler is running the triggers are fired and jobs are executed, {@code false} otherwise
+     * @return {@code true} if a scheduler is running, the triggers are fired and jobs are executed, {@code false} otherwise
      */
     boolean isRunning();
 
@@ -82,7 +82,7 @@ public interface Scheduler {
      * <p>
      * It is a no-op if the identified job was not added programmatically.
      *
-     * @param identity
+     * @param identity unique identifier for the job to remove
      * @return the trigger or {@code null} if no such job exists
      */
     Trigger unscheduleJob(String identity);
@@ -125,28 +125,28 @@ public interface Scheduler {
     interface JobDefinition {
 
         /**
-         * Defines minimum gap between the invocations
+         * Defines the minimum gap between the invocations
          * <p>
          * Defaults to 0s
          * <p>
-         * Part of {@link GreenScheduled#successive()} ()}
+         * Part of {@link GreenScheduled#successive()}
          *
          * @param duration the minimum gap.
          * @return self
-         * @see GreenScheduled#successive() ()
+         * @see GreenScheduled#successive()
          */
         JobDefinition setMinimumGap(Duration duration);
 
         /**
-         * Defines maximum gap between the invocations
+         * Defines the maximum gap between the invocations
          * <p>
          * Defaults to null, no maximum.
          * <p>
-         * Part of {@link GreenScheduled#successive()} ()}
+         * Part of {@link GreenScheduled#successive()}
          *
          * @param duration the maximum gap
          * @return self
-         * @see GreenScheduled#successive() ()
+         * @see GreenScheduled#successive()
          */
         JobDefinition setMaximumGap(Duration duration);
 
@@ -164,7 +164,7 @@ public interface Scheduler {
         /**
          * Defines the carbonIntensityZone for fetching carbon intensity data to use when scheduling.
          * <p>
-         * The value are case-insensitive and format depends on the
+         * The value is case-insensitive and the format depends on the
          * {@link CarbonIntensityPlanner}.
          * <p>
          * The default scheduler supports the following options:
@@ -181,7 +181,7 @@ public interface Scheduler {
          * Specify the strategy to handle concurrent execution of a scheduled method. By default, a scheduled method can be
          * executed concurrently.
          *
-         * @param concurrentExecution
+         * @param concurrentExecution the strategy to handle concurrent execution of a scheduled method
          * @return self
          * @see GreenScheduled#concurrentExecution()
          */
@@ -192,7 +192,7 @@ public interface Scheduler {
          * <p>
          * The class must declare a public no-args constructor.
          *
-         * @param skipPredicate
+         * @param skipPredicate the predicate that can be used to skip an execution of a scheduled method
          * @return self
          * @see GreenScheduled#skipExecutionIf()
          */
@@ -201,14 +201,16 @@ public interface Scheduler {
         /**
          * Defines a period after which the job is considered overdue.
          *
-         * @param period
+         * @param period the period after which the job is considered overdue
          * @return self
          * @see GreenScheduled#overdueGracePeriod()
          */
         JobDefinition setOverdueGracePeriod(Duration period);
 
         /**
-         * @param task
+         * Defines the task to execute.
+         *
+         * @param task the task to execute
          * @return self
          */
         JobDefinition setTask(Consumer<ScheduledExecution> task);

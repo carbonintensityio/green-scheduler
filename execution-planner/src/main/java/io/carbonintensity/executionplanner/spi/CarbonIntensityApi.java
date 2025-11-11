@@ -11,10 +11,10 @@ import io.carbonintensity.executionplanner.runtime.impl.ZonedCarbonIntensityPeri
 public interface CarbonIntensityApi {
 
     /**
-     * Gets carbon intensity data for given period and zone
+     * Gets carbon intensity data for the given period and zone
      *
      * @param zonedPeriod period and zone
-     * @return data for given period
+     * @return data for the given period
      */
     CompletableFuture<CarbonIntensity> getCarbonIntensity(ZonedCarbonIntensityPeriod zonedPeriod);
 

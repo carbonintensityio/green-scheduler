@@ -5,7 +5,7 @@ import java.util.List;
 import io.carbonintensity.scheduler.GreenScheduled;
 
 /**
- * This class is mutable so that it can be serialized in a recorder method
+ * This class is mutable so that it can be serialized in a recorder method.
  *
  * @see ScheduledMethod
  */

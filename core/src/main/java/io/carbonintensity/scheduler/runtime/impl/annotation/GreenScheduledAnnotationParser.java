@@ -23,7 +23,7 @@ import io.carbonintensity.scheduler.GreenScheduled;
 
 /**
  * Parses {@link GreenScheduled} annotations and generates corresponding {@link PlanningConstraints}.
- *
+ * <p>
  * This utility class processes the scheduling constraints defined in the {@link GreenScheduled} annotation
  * and converts them into either {@link DefaultFixedWindowPlanningConstraints} or
  * {@link DefaultSuccessivePlanningConstraints}, depending on the annotation's configuration.

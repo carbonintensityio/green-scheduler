@@ -3,7 +3,7 @@ package io.carbonintensity.scheduler.runtime.impl.annotation;
 import java.time.ZonedDateTime;
 
 /**
- * Represents the constraints of a fixedTimeWindow scheduler
+ * Represents the constraints of a fixedTimeWindow scheduler.
  */
 public class FixedWindowConstraints {
     private final ZonedDateTime startTime;

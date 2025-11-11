@@ -11,7 +11,7 @@ import java.time.format.ResolverStyle;
 import java.util.Optional;
 
 /**
- * Util class to parse fixedWindowConstraints
+ * Util class to parse fixedWindowConstraints.
  */
 public class FixedWindowExpressionParser {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm")

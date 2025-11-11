@@ -5,8 +5,8 @@ import java.time.Instant;
 /**
  * Trigger is bound to a scheduled job.
  * <p>
- * It represents the logic that is used to test if a scheduled job should be executed
- * at a specific time, i.e. the trigger is "fired".
+ * It represents the logic used to test if a scheduled job should be executed
+ * at a specific time, i.e., the trigger is "fired".
  *
  * @see GreenScheduled
  */

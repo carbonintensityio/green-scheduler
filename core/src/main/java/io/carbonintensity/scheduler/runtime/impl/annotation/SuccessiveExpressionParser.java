@@ -2,6 +2,9 @@ package io.carbonintensity.scheduler.runtime.impl.annotation;
 
 import java.util.Optional;
 
+/**
+ * Util class to parse successiveConstraints.
+ */
 public class SuccessiveExpressionParser {
 
     private SuccessiveExpressionParser() {

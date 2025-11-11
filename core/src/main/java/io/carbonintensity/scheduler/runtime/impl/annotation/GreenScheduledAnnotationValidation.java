@@ -11,7 +11,7 @@ import io.carbonintensity.scheduler.GreenScheduled;
  * Utility class for validating {@link GreenScheduled} annotations.
  * <p>
  * This class provides a method to check the correctness of a {@link GreenScheduled} annotation
- * and return a list of validation errors if the configuration is invalid.
+ * and returns a list of validation errors if the configuration is invalid.
  * </p>
  *
  * <p>
