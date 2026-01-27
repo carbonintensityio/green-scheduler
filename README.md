@@ -135,7 +135,7 @@ public void greenSuccessiveWindowJob() {
 Visit the [carbonintensity.io](https://carbonintensity.io) homepage to get an API key for the scheduler.
 
 ### Supported zones
-Currently only the Netherlands (NL) is supported but more zones will follow.
+The current supported list can be found soon on [carbonintensity.io](https://carbonintensity.io).
 
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
