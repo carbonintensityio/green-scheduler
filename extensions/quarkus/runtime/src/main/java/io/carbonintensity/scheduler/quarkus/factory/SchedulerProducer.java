@@ -22,14 +22,24 @@ public class SchedulerProducer {
     @Inject
     Instance<CarbonIntensityApi> carbonIntensityApi;
 
+    @Inject
+    QuarkusSchedulerCompatibilityProperties quarkusSchedulerProperties;
+
     @Produces
     @DefaultBean
     public SchedulerConfig schedulerConfig() {
         var builder = new SchedulerConfigBuilder(greenSchedulerProperties);
+        if (!isQuarkusSchedulerEnabled()) {
+            builder.disabled();
+        }
         if (carbonIntensityApi.isResolvable()) {
             builder.carbonIntensityApi(carbonIntensityApi.get());
         }
         return builder.build();
+    }
+
+    private boolean isQuarkusSchedulerEnabled() {
+        return quarkusSchedulerProperties.enabled().orElse(Boolean.TRUE);
     }
 
     @Produces
