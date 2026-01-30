@@ -96,8 +96,8 @@ public class SchedulerProcessor {
     void registerQuarkusSchedulerDisableProperty(BuildProducer<ConfigDescriptionBuildItem> configDescriptions) {
         configDescriptions.produce(new ConfigDescriptionBuildItem(
                 "quarkus.scheduler.enabled",
-                "Enables the Quarkus scheduler component. When disabled, the Green Scheduler stays off as well.",
                 "true",
+                "Enables the Quarkus scheduler component. When disabled, the Green Scheduler stays off as well.",
                 Boolean.class.getName(),
                 List.of("true", "false"),
                 ConfigPhase.BUILD_AND_RUN_TIME_FIXED));
