@@ -61,6 +61,7 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.AnnotationProxyBuildItem;
+import io.quarkus.deployment.builditem.ConfigDescriptionBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
@@ -73,6 +74,7 @@ import io.quarkus.gizmo.MethodCreator;
 import io.quarkus.gizmo.MethodDescriptor;
 import io.quarkus.gizmo.ResultHandle;
 import io.quarkus.gizmo.TryBlock;
+import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.util.HashUtil;
 
 public class SchedulerProcessor {
@@ -88,6 +90,17 @@ public class SchedulerProcessor {
     @BuildStep
     NativeImageResourceDirectoryBuildItem nativeImageResourceBuildItem() {
         return new NativeImageResourceDirectoryBuildItem("fallback");
+    }
+
+    @BuildStep
+    void registerQuarkusSchedulerDisableProperty(BuildProducer<ConfigDescriptionBuildItem> configDescriptions) {
+        configDescriptions.produce(new ConfigDescriptionBuildItem(
+                "quarkus.scheduler.enabled",
+                "Enables the Quarkus scheduler component. When disabled, the Green Scheduler stays off as well.",
+                "true",
+                Boolean.class.getName(),
+                List.of("true", "false"),
+                ConfigPhase.BUILD_AND_RUN_TIME_FIXED));
     }
 
     @BuildStep
