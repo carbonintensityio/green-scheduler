@@ -4,7 +4,7 @@ import java.util.List;
 
 import io.carbonintensity.scheduler.quarkus.deployment.ScheduledBusinessMethodItem;
 import io.carbonintensity.scheduler.quarkus.devui.SchedulerJsonRPCService;
-import io.quarkus.deployment.IsDevelopment;
+import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
@@ -15,7 +15,7 @@ import io.quarkus.devui.spi.page.WebComponentPageBuilder;
 
 public class SchedulerDevUIProcessor {
 
-    @BuildStep(onlyIf = IsDevelopment.class)
+    @BuildStep(onlyIf = IsLocalDevelopment.class)
     void page(List<ScheduledBusinessMethodItem> scheduledMethods,
             BuildProducer<CardPageBuildItem> cardPages,
             BuildProducer<FooterPageBuildItem> footerPages) {
@@ -35,7 +35,7 @@ public class SchedulerDevUIProcessor {
         footerPages.produce(new FooterPageBuildItem(logPageBuilder));
     }
 
-    @BuildStep
+    @BuildStep(onlyIf = IsLocalDevelopment.class)
     JsonRPCProvidersBuildItem rpcProvider() {
         return new JsonRPCProvidersBuildItem(SchedulerJsonRPCService.class);
     }
