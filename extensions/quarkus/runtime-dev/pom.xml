@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.carbonintensity</groupId>
+        <artifactId>quarkus-green-scheduler-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>quarkus-green-scheduler-dev</artifactId>
+    <name>Quarkus Green Scheduler Extension - Runtime Dev</name>
+    <description>Green Scheduler Dev UI support, only used in dev and test modes.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>quarkus-green-scheduler</artifactId>
+            <version>${revision}</version>
+        </dependency>
+    </dependencies>
+</project>
