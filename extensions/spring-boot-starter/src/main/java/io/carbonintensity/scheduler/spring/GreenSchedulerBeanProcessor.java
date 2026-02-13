@@ -34,7 +34,7 @@ public final class GreenSchedulerBeanProcessor implements BeanPostProcessor, Ite
     }
 
     @Override
-    public Object postProcessBeforeInitialization(@NonNull Object bean, @NonNull String beanName) {
+    public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) {
         var beanClass = AopUtils.getTargetClass(bean);
         var methods = beanClass.getDeclaredMethods();
         Stream.of(methods)

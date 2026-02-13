@@ -22,7 +22,7 @@ class GreenSchedulerBeanProcessorTests {
 
     @Test
     void givenAnnotatedBean_whenProcessing_thenRegisterBean() {
-        beanProcessor.postProcessBeforeInitialization(bean, beanName);
+        beanProcessor.postProcessAfterInitialization(bean, beanName);
         var beanInfoList = beanProcessor.getScheduledBeanInfoList();
         assertThat(beanInfoList)
                 .hasSize(1)
@@ -33,8 +33,8 @@ class GreenSchedulerBeanProcessorTests {
 
     @Test
     void givenAnnotatedBean_whenProcessingMultipleTimes_thenRegisterBeanOnlyOnce() {
-        beanProcessor.postProcessBeforeInitialization(bean, beanName);
-        beanProcessor.postProcessBeforeInitialization(bean, beanName);
+        beanProcessor.postProcessAfterInitialization(bean, beanName);
+        beanProcessor.postProcessAfterInitialization(bean, beanName);
         var beanInfoList = beanProcessor.getScheduledBeanInfoList();
         assertThat(beanInfoList)
                 .hasSize(1)
@@ -45,7 +45,7 @@ class GreenSchedulerBeanProcessorTests {
 
     @Test
     void givenAnnotatedBean_whenProcessing_thenIterateValues() {
-        beanProcessor.postProcessBeforeInitialization(bean, beanName);
+        beanProcessor.postProcessAfterInitialization(bean, beanName);
         assertThat(beanProcessor.hasNext()).isTrue();
         var beanInfo = beanProcessor.next();
         assertThat(beanInfo.getBean()).isEqualTo(bean);
