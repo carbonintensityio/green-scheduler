@@ -4,6 +4,8 @@ import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.springframework.aop.support.AopUtils;
+
 import io.carbonintensity.scheduler.ScheduledExecution;
 import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
 
@@ -31,7 +33,9 @@ public class MethodScheduledInvoker implements ScheduledInvoker {
     @Override
     public CompletionStage<Void> invoke(ScheduledExecution scheduledExecution) {
         try {
-            scheduledMethod.invoke(bean);
+            Method invocableMethod = AopUtils.selectInvocableMethod(this.scheduledMethod, this.bean.getClass());
+            invocableMethod.invoke(bean);
+
             return CompletableFuture.completedStage(null);
         } catch (Exception e) {
             return CompletableFuture.failedStage(e);
