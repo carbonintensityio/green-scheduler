@@ -27,4 +27,9 @@ abstract class DelegateInvoker implements ScheduledInvoker {
             return CompletableFuture.failedStage(e);
         }
     }
+
+    @Override
+    public boolean isBlocking() {
+        return delegate.isBlocking();
+    }
 }
