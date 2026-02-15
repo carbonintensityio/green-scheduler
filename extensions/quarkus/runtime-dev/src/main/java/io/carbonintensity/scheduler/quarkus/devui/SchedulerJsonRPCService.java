@@ -146,15 +146,22 @@ public class SchedulerJsonRPCService {
                 Context vdc = VertxContext.getOrCreateDuplicatedContext(vertx.get());
                 VertxContextSafetyToggle.setContextSafe(vdc, true);
                 try {
-                    ScheduledInvoker invoker = c
-                            .createInvoker(metadata.getInvokerClassName());
-
-                    vdc.runOnContext(x -> {
+                    ScheduledInvoker invoker = c.createInvoker(metadata.getInvokerClassName());
+                    Runnable invocation = () -> {
                         try {
                             invoker.invoke(new DevUIScheduledExecution());
                         } catch (Exception ignored) {
                         }
-                    });
+                    };
+
+                    if (invoker.isBlocking()) {
+                        vdc.executeBlocking(() -> {
+                            invocation.run();
+                            return null;
+                        }, false);
+                    } else {
+                        vdc.runOnContext(x -> invocation.run());
+                    }
 
                     LOG.infof("Invoked scheduled method %s via Dev UI", methodDescription);
                 } catch (Exception e) {
