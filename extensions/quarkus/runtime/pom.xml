@@ -20,11 +20,10 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
-            <version>${quarkus.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-caffeine</artifactId>
+            <artifactId>quarkus-vertx</artifactId>
         </dependency>
 
         <!-- DEV console dependencies -->
@@ -42,6 +41,11 @@
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-extension-maven-plugin</artifactId>
                 <version>${quarkus.version}</version>
+                <configuration>
+                    <conditionalDevDependencies>
+                        <artifact>${project.groupId}:${project.artifactId}-dev:${project.version}</artifact>
+                    </conditionalDevDependencies>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>compile</phase>

@@ -187,7 +187,9 @@ public class SchedulerProcessor {
                 }
             }
             if (schedules != null) {
-                scheduledBusinessMethods.produce(new ScheduledBusinessMethodItem(bean, method, schedules));
+                boolean nonBlocking = transformedAnnotations.hasAnnotation(method, SchedulerDotNames.NON_BLOCKING);
+                scheduledBusinessMethods
+                        .produce(new ScheduledBusinessMethodItem(bean, method, schedules, nonBlocking));
                 LOGGER.debugf("Found scheduled business method %s declared on %s", method, bean);
             }
         }
@@ -345,6 +347,10 @@ public class SchedulerProcessor {
                 .superClass(DefaultInvoker.class.getName())
                 .build();
 
+        if (scheduledMethod.isNonBlocking()) {
+            MethodCreator isBlocking = invokerCreator.getMethodCreator("isBlocking", boolean.class);
+            isBlocking.returnValue(isBlocking.load(false));
+        }
         // The descriptor is: CompletionStage invoke(ScheduledExecution execution)
         MethodCreator invoke = invokerCreator.getMethodCreator("invokeBean", CompletionStage.class, ScheduledExecution.class);
 

@@ -19,9 +19,19 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>quarkus-green-scheduler-dev</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc-deployment</artifactId>
-            <version>${quarkus.version}</version>
+            <artifactId>quarkus-vertx-deployment</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-vertx-http-deployment</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -40,15 +50,6 @@
             <artifactId>rest-assured</artifactId>
             <version>5.5.7</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-vertx-http-deployment</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-caffeine-deployment</artifactId>
         </dependency>
     </dependencies>
 
