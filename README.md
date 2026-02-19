@@ -137,6 +137,33 @@ Visit the [carbonintensity.io](https://carbonintensity.io) homepage to get an AP
 ### Supported zones
 The current supported list can be found soon on [carbonintensity.io](https://carbonintensity.io).
 
+### Caveats
+
+#### Concurrent executions
+The scheduler may start a process multiple times when multiple instances of the same application are running 
+(for example, on different nodes). To prevent this, an additional solution such as 
+[Shedlock](https://github.com/lukas-krecan/ShedLock) is needed. 
+
+Shedlock is supported by and tested with `green-scheduler` release v0.8.3 and later, for both Spring Boot and 
+Quarkus-based projects. For Spring Boot applications, please note that the deprecated TaskScheduler proxy mode of 
+Shedlock is not supported.
+
+Refer to the [ShedLock documentation](https://github.com/lukas-krecan/ShedLock/blob/master/README.md) for more information 
+on how to configure and use it with scheduled jobs:
+- Instructions for Spring-based application can be found [here](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#enable-and-configure-scheduled-locking-spring).
+- For Quarkus-based applications, use ShedLock's [CDI integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#cdi-integration). 
+
+Example of ShedLock's `@SchedulerLock` annotation used together with the `@GreenScheduled` annotation:
+```java
+
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
+@SchedulerLock(name = "greenFixedWindowJobLock", lockAtMostFor = "5m", lockAtLeastFor = "1m")
+public void greenFixedWindowJob() {
+    // Task to be started at the greenest moment between 08:00 and 17:00
+    // Once started, will be locked for execution by other instances for at least 1 minute and at most 5 minutes.
+}
+```
+
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
 what the [Quarkus](https://github.com/quarkusio/quarkus) community has created. Further acknowledgements can be found in the [NOTICE](NOTICE) file
