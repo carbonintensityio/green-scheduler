@@ -58,7 +58,7 @@ jobs:
         run: ./mvnw $COMMON_MAVEN_ARGS --file pom.xml -Drevision=${{ steps.metadata.outputs.current-version }} -Dgpg.keyname=${{ secrets.GPG_KEY_ID }} deploy
 
       - name: Create GitHub release and upload artefact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: 'v${{ steps.metadata.outputs.current-version }}'
           name: 'v${{ steps.metadata.outputs.current-version }}'
