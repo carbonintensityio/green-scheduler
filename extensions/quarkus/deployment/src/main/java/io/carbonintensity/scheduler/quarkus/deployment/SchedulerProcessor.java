@@ -56,6 +56,7 @@ import io.quarkus.arc.processor.BeanDeploymentValidator;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.BuiltinScope;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.deployment.GeneratedClassGizmo2Adaptor;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -64,6 +65,7 @@ import io.quarkus.deployment.builditem.AnnotationProxyBuildItem;
 import io.quarkus.deployment.builditem.ConfigDescriptionBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
+import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.gizmo.CatchBlockCreator;
@@ -282,11 +284,13 @@ public class SchedulerProcessor {
     @Record(RUNTIME_INIT)
     public FeatureBuildItem build(BuildProducer<SyntheticBeanBuildItem> syntheticBeans,
             SchedulerRecorder recorder, List<ScheduledBusinessMethodItem> scheduledMethods,
-            BuildProducer<GeneratedClassBuildItem> generatedClasses, BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
+            BuildProducer<GeneratedClassBuildItem> generatedClasses,
+            BuildProducer<GeneratedResourceBuildItem> generatedResources,
+            BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             AnnotationProxyBuildItem annotationProxy) {
 
         List<MutableScheduledMethod> scheduledMetadata = new ArrayList<>();
-        ClassOutput classOutput = new GeneratedClassGizmoAdaptor(generatedClasses, (Function<String, String>) name -> {
+        Function<String, String> generatedToBaseNameFun = name -> {
             // org/acme/Foo_ScheduledInvoker_run_0000 -> org.acme.Foo
             int idx = name.indexOf(INVOKER_SUFFIX);
             if (idx != -1) {
@@ -296,7 +300,10 @@ public class SchedulerProcessor {
                 name = name.replace(NESTED_SEPARATOR, "$");
             }
             return name;
-        });
+        };
+        ClassOutput classOutput = new GeneratedClassGizmoAdaptor(generatedClasses, generatedToBaseNameFun);
+        io.quarkus.gizmo2.ClassOutput classOutput2 = new GeneratedClassGizmo2Adaptor(generatedClasses, generatedResources,
+                generatedToBaseNameFun);
 
         for (ScheduledBusinessMethodItem scheduledMethod : scheduledMethods) {
             MutableScheduledMethod metadata = new MutableScheduledMethod();
@@ -305,7 +312,7 @@ public class SchedulerProcessor {
             metadata.setInvokerClassName(invokerClass);
             List<GreenScheduled> schedules = new ArrayList<>();
             for (AnnotationInstance scheduled : scheduledMethod.getSchedules()) {
-                schedules.add(annotationProxy.builder(scheduled, GreenScheduled.class).build(classOutput));
+                schedules.add(annotationProxy.builder(scheduled, GreenScheduled.class).build(classOutput2));
             }
             metadata.setSchedules(schedules);
             metadata.setDeclaringClassName(scheduledMethod.getMethod().declaringClass().toString());
