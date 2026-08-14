@@ -61,6 +61,7 @@
                     <execution>
                         <id>default-compile</id>
                         <configuration>
+                            <release>17</release>
                             <annotationProcessorPaths>
                                 <path>
                                     <groupId>io.quarkus</groupId>
