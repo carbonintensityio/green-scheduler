@@ -467,7 +467,7 @@ public class SchedulerProcessor {
             AnnotationValue timeZoneValue = schedule.value("timeZone");
             if (timeZoneValue != null) {
                 String timeZone = timeZoneValue.asString();
-                if (!SchedulerUtils.isConfigValue(timeZone) && !timeZone.equals("")) {
+                if (!SchedulerUtils.isConfigValue(timeZone) && !timeZone.isEmpty()) {
                     try {
                         ZoneId.of(timeZone);
                     } catch (Exception e) {
