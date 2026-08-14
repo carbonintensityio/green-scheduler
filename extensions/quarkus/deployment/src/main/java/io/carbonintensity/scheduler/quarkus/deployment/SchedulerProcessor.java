@@ -318,7 +318,9 @@ public class SchedulerProcessor {
         return new FeatureBuildItem("green-scheduler");
     }
 
-    private static @NonNull ClassOutput getClassOutput(BuildProducer<GeneratedClassBuildItem> generatedClasses, BuildProducer<GeneratedResourceBuildItem> generatedResources, BuildProducer<GeneratedServiceProviderBuildItem> generatedServiceProviders) {
+    private static @NonNull ClassOutput getClassOutput(BuildProducer<GeneratedClassBuildItem> generatedClasses,
+            BuildProducer<GeneratedResourceBuildItem> generatedResources,
+            BuildProducer<GeneratedServiceProviderBuildItem> generatedServiceProviders) {
         Function<String, String> generatedToBaseNameFun = name -> {
             // org/acme/Foo_ScheduledInvoker_run_0000 -> org.acme.Foo
             int idx = name.indexOf(INVOKER_SUFFIX);
