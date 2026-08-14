@@ -55,7 +55,6 @@ import io.quarkus.arc.deployment.ValidationPhaseBuildItem.ValidationErrorBuildIt
 import io.quarkus.arc.processor.BeanDeploymentValidator;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.BuiltinScope;
-import io.quarkus.arc.processor.DotNames;
 import io.quarkus.deployment.GeneratedClassGizmo2Adaptor;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -66,6 +65,7 @@ import io.quarkus.deployment.builditem.ConfigDescriptionBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
+import io.quarkus.deployment.builditem.GeneratedServiceProviderBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.gizmo.CatchBlockCreator;
@@ -286,6 +286,7 @@ public class SchedulerProcessor {
             SchedulerRecorder recorder, List<ScheduledBusinessMethodItem> scheduledMethods,
             BuildProducer<GeneratedClassBuildItem> generatedClasses,
             BuildProducer<GeneratedResourceBuildItem> generatedResources,
+            BuildProducer<GeneratedServiceProviderBuildItem> generatedServiceProviders,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             AnnotationProxyBuildItem annotationProxy) {
 
@@ -303,7 +304,7 @@ public class SchedulerProcessor {
         };
         ClassOutput classOutput = new GeneratedClassGizmoAdaptor(generatedClasses, generatedToBaseNameFun);
         io.quarkus.gizmo2.ClassOutput classOutput2 = new GeneratedClassGizmo2Adaptor(generatedClasses, generatedResources,
-                generatedToBaseNameFun);
+                generatedServiceProviders, generatedToBaseNameFun);
 
         for (ScheduledBusinessMethodItem scheduledMethod : scheduledMethods) {
             MutableScheduledMethod metadata = new MutableScheduledMethod();
@@ -334,21 +335,19 @@ public class SchedulerProcessor {
         boolean isStatic = Modifier.isStatic(method.flags());
         ClassInfo implClazz = isStatic ? method.declaringClass() : bean.getImplClazz();
 
-        String baseName;
-        if (implClazz.enclosingClass() != null) {
-            baseName = DotNames.simpleName(implClazz.enclosingClass()) + NESTED_SEPARATOR
-                    + DotNames.simpleName(implClazz);
-        } else {
-            baseName = DotNames.simpleName(implClazz.name());
-        }
+        DotName enclosingClass = implClazz.enclosingClass();
+
+        String baseName = enclosingClass != null
+                ? withoutPackagePrefix(enclosingClass) + NESTED_SEPARATOR + withoutPackagePrefix(implClazz.name())
+                : withoutPackagePrefix(implClazz.name());
+
         StringBuilder sigBuilder = new StringBuilder();
         sigBuilder.append(method.name()).append("_").append(method.returnType().name().toString());
         for (Type i : method.parameterTypes()) {
             sigBuilder.append(i.name().toString());
         }
-        String generatedName = DotNames.internalPackageNameWithTrailingSlash(implClazz.name()) + baseName
-                + INVOKER_SUFFIX + "_" + method.name() + "_"
-                + HashUtil.sha1(sigBuilder.toString());
+        String generatedName = DotName.createSimple(implClazz.name().toString())
+                + baseName + INVOKER_SUFFIX + "_" + method.name() + "_" + HashUtil.sha1(sigBuilder.toString());
 
         ClassCreator invokerCreator = ClassCreator.builder().classOutput(classOutput).className(generatedName)
                 .superClass(DefaultInvoker.class.getName())
@@ -514,6 +513,10 @@ public class SchedulerProcessor {
 
     private static String errorMessage(String base, AnnotationInstance scheduled, MethodInfo method) {
         return String.format("%s: %s declared on %s#%s()", base, scheduled, method.declaringClass().name(), method.name());
+    }
+
+    private static String withoutPackagePrefix(DotName name) {
+        return DotName.createSimple(name.toString()).withoutPackagePrefix();
     }
 
     @BuildStep
