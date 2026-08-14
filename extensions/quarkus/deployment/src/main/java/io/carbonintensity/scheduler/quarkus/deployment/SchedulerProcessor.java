@@ -27,6 +27,7 @@ import org.jboss.jandex.Type;
 import org.jboss.jandex.Type.Kind;
 import org.jboss.jandex.gizmo2.Jandex2Gizmo;
 import org.jboss.logging.Logger;
+import org.jspecify.annotations.NonNull;
 
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
@@ -80,7 +81,6 @@ import io.quarkus.gizmo2.desc.InterfaceMethodDesc;
 import io.quarkus.gizmo2.desc.MethodDesc;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.util.HashUtil;
-import org.jspecify.annotations.NonNull;
 
 public class SchedulerProcessor {
 
