@@ -355,9 +355,10 @@ public class SchedulerProcessor {
         for (Type i : method.parameterTypes()) {
             sigBuilder.append(i.name().toString());
         }
-String implClassName = implClazz.name().toString();
-String pkgPrefix = implClassName.contains(".") ? implClassName.substring(0, implClassName.lastIndexOf('.') + 1) : "";
-String generatedName = pkgPrefix + baseName + INVOKER_SUFFIX + "_" + method.name() + "_" + HashUtil.sha1(sigBuilder.toString());
+        String implClassName = implClazz.name().toString();
+        String pkgPrefix = implClassName.contains(".") ? implClassName.substring(0, implClassName.lastIndexOf('.') + 1) : "";
+        String generatedName = pkgPrefix + baseName + INVOKER_SUFFIX + "_" + method.name() + "_"
+                + HashUtil.sha1(sigBuilder.toString());
 
         MethodDesc businessMethod = Jandex2Gizmo.methodDescOf(method);
         boolean methodReturnsVoid = method.returnType().kind() == Kind.VOID;
@@ -521,7 +522,7 @@ String generatedName = pkgPrefix + baseName + INVOKER_SUFFIX + "_" + method.name
         return String.format("%s: %s declared on %s#%s()", base, scheduled, method.declaringClass().name(), method.name());
     }
 
-private static String withoutPackagePrefix(DotName name) {
+    private static String withoutPackagePrefix(DotName name) {
         String s = name.toString();
         int lastDot = s.lastIndexOf('.');
         return lastDot == -1 ? s : s.substring(lastDot + 1);
