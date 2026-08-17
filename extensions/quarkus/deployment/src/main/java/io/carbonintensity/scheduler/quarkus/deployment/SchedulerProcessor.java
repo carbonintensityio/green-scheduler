@@ -355,9 +355,9 @@ public class SchedulerProcessor {
         for (Type i : method.parameterTypes()) {
             sigBuilder.append(i.name().toString());
         }
-        String generatedName = (DotName.createSimple(implClazz.name().toString())
-                + baseName + INVOKER_SUFFIX + "_" + method.name() + "_" + HashUtil.sha1(sigBuilder.toString()))
-                .replace('/', '.');
+String implClassName = implClazz.name().toString();
+String pkgPrefix = implClassName.contains(".") ? implClassName.substring(0, implClassName.lastIndexOf('.') + 1) : "";
+String generatedName = pkgPrefix + baseName + INVOKER_SUFFIX + "_" + method.name() + "_" + HashUtil.sha1(sigBuilder.toString());
 
         MethodDesc businessMethod = Jandex2Gizmo.methodDescOf(method);
         boolean methodReturnsVoid = method.returnType().kind() == Kind.VOID;
