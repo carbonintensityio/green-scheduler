@@ -521,8 +521,10 @@ String generatedName = pkgPrefix + baseName + INVOKER_SUFFIX + "_" + method.name
         return String.format("%s: %s declared on %s#%s()", base, scheduled, method.declaringClass().name(), method.name());
     }
 
-    private static String withoutPackagePrefix(DotName name) {
-        return DotName.createSimple(name.toString()).withoutPackagePrefix();
+private static String withoutPackagePrefix(DotName name) {
+        String s = name.toString();
+        int lastDot = s.lastIndexOf('.');
+        return lastDot == -1 ? s : s.substring(lastDot + 1);
     }
 
     @BuildStep
