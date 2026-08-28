@@ -51,13 +51,10 @@
 
         <!-- Default properties -->
         <maven.compiler.parameters>true</maven.compiler.parameters>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
+        <!-- kept for formatter-maven-plugin, which reads these directly and falls back to 1.8 if unset -->
         <maven.compiler.source>${maven.compiler.release}</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.release}</maven.compiler.target>
-        <maven.compiler.testTarget>${maven.compiler.target}</maven.compiler.testTarget>
-        <maven.compiler.testSource>${maven.compiler.source}</maven.compiler.testSource>
         <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
 
         <!-- Cross plugins settings -->
@@ -67,18 +64,9 @@
         <!-- Make the builds reproducible - see https://maven.apache.org/guides/mini/guide-reproducible-builds.html -->
         <project.build.outputTimestamp>2024-10-16T11:35:20Z</project.build.outputTimestamp>
 
-        <!--
-            Options to override the compiler arguments directly on the compiler argument line to separate between what
-            the IDE understands as the source level and what the Maven compiler actually use.
-        -->
-        <maven.compiler.argument.target>${maven.compiler.target}</maven.compiler.argument.target>
-        <maven.compiler.argument.source>${maven.compiler.source}</maven.compiler.argument.source>
-        <maven.compiler.argument.testTarget>${maven.compiler.testTarget}</maven.compiler.argument.testTarget>
-        <maven.compiler.argument.testSource>${maven.compiler.testSource}</maven.compiler.argument.testSource>
-
         <!-- maven-enforcer-plugin -->
         <maven.min.version>3.9.6</maven.min.version>
-        <jdk.min.version>${maven.compiler.argument.source}</jdk.min.version>
+        <jdk.min.version>${maven.compiler.release}</jdk.min.version>
         <insecure.repositories>ERROR</insecure.repositories>
 
     </properties>
@@ -197,10 +185,6 @@
                 <configuration>
                     <showDeprecation>true</showDeprecation>
                     <showWarnings>true</showWarnings>
-                    <source>${maven.compiler.argument.source}</source>
-                    <target>${maven.compiler.argument.target}</target>
-                    <testSource>${maven.compiler.argument.testSource}</testSource>
-                    <testTarget>${maven.compiler.argument.testTarget}</testTarget>
                     <parameters>true</parameters>
                     <compilerArgs>
                         <arg>-Xlint:unchecked</arg>
