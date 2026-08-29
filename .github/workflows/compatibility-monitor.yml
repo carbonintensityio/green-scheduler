@@ -1,0 +1,226 @@
+name: Compatibility (ecosystem monitor)
+
+# Tests the actually PUBLISHED green-scheduler artifact (from Maven Central) against newer
+# Java/Quarkus/Spring Boot versions as they show up - not a rebuild from main. That distinction
+# matters: issue #199 was a binary incompatibility between a compiled deployment jar and a newer
+# Quarkus at augmentation time, and rebuilding against the newer version would just recompile the
+# problem away instead of reproducing it. See docs/adr/0001-compatibility-testing-strategy.md.
+#
+# Runs weekly plus on demand. On failure, opens or updates a tracking issue per
+# framework:minor-line:tier key (see compatibility/report-failure) - required tier alerts
+# immediately, canary tier only after two consecutive scheduled failures of the same key.
+
+permissions:
+  contents: read
+
+env:
+  COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end -Dno-format"
+
+on:
+  schedule:
+    # Monday, early morning UTC - deliberately not on the hour.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Which tiers to test'
+        type: choice
+        options:
+          - required
+          - canary
+          - all
+        default: all
+
+jobs:
+  resolve:
+    # Deliberately no `if` here - see compatibility-pr.yml for why. This job always runs and
+    # decides its own scope internally (workflow_dispatch's scope input, or "all" on a schedule
+    # trigger where that input doesn't exist).
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      gs_version: ${{ steps.gs_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve compatibility matrix
+        id: resolve
+        run: |
+          set -euo pipefail
+          scope="${{ github.event.inputs.scope }}"
+          if [ -z "$scope" ]; then
+            scope="all"
+          fi
+          echo "Scope: $scope"
+          matrix="$(compatibility/resolve-matrix "$scope")"
+          echo "$matrix" | jq .
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve latest published green-scheduler version
+        id: gs_version
+        run: |
+          set -euo pipefail
+          url="$(yq -r '.published-artifact.maven-metadata' compatibility/policy.yaml)"
+          version="$(curl -sf "$url" | yq -p=xml -r '.metadata.versioning.release')"
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "Could not resolve the latest published green-scheduler version from $url" >&2
+            exit 1
+          fi
+          echo "Latest published green-scheduler version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    name: ${{ matrix.label }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: main
+
+      - name: Setup JDK ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java }}
+          cache: 'maven'
+
+      # Tier decides whether a failure here fails the job - required blocks (red run, alerts
+      # immediately), canary doesn't (see compatibility/report-failure for the two-strike rule
+      # that keeps a single broken RC/milestone from becoming noise). This is deliberately a
+      # step-level continue-on-error, not a job-level one: a job-level continue-on-error would make
+      # needs.test.result report "success" regardless, and the report job downstream would never
+      # see the failure at all.
+      - name: Test consumer against the published release
+        id: published_test
+        continue-on-error: ${{ matrix.tier == 'canary' }}
+        working-directory: main
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version ${{ needs.resolve.outputs.gs_version }} --java ${{ matrix.java }}
+
+      # Diagnostic only, and only runs when the published artifact failed: does the same
+      # combination work against main's source? Tells us whether a fix already landed (so a patch
+      # release is what's actually needed) or whether main is broken the same way.
+      - name: Build green-scheduler from main (diagnostic)
+        id: build_main
+        if: steps.published_test.outcome == 'failure'
+        continue-on-error: true
+        working-directory: main
+        run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
+
+      - name: Test consumer against main source (diagnostic)
+        id: main_test
+        if: steps.published_test.outcome == 'failure' && steps.build_main.outcome == 'success'
+        continue-on-error: true
+        working-directory: main
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
+
+      - name: Record result
+        if: always()
+        run: |
+          set -euo pipefail
+          status="success"
+          if [ "${{ steps.published_test.outcome }}" = "failure" ]; then
+            status="failure"
+          fi
+
+          main_status="unknown"
+          if [ "$status" = "failure" ]; then
+            if [ "${{ steps.main_test.outcome }}" = "success" ]; then
+              main_status="compatible"
+            elif [ "${{ steps.main_test.outcome }}" = "failure" ] || [ "${{ steps.build_main.outcome }}" = "failure" ]; then
+              main_status="incompatible"
+            fi
+          fi
+
+          phase="mvn verify (Spring context load)"
+          if [ "${{ matrix.framework }}" = "quarkus" ]; then
+            phase="mvn verify (Quarkus build/augmentation)"
+          fi
+
+          mkdir -p results
+          jq -n \
+            --arg framework "${{ matrix.framework }}" \
+            --arg line "${{ matrix.line }}" \
+            --arg tier "${{ matrix.tier }}" \
+            --arg version "${{ matrix.version }}" \
+            --argjson java "${{ matrix.java }}" \
+            --arg key "${{ matrix.key }}" \
+            --arg status "$status" \
+            --arg mainStatus "$main_status" \
+            --arg phase "$phase" \
+            --arg gsVersion "${{ needs.resolve.outputs.gs_version }}" \
+            '{framework:$framework,line:$line,tier:$tier,version:$version,java:$java,key:$key,status:$status,mainStatus:$mainStatus,consumerPhase:$phase,greenSchedulerVersion:$gsVersion}' \
+            > "results/result.json"
+          cat "results/result.json"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.framework }}-${{ matrix.line }}-${{ matrix.tier }}-jdk${{ matrix.java }}
+          path: results/result.json
+          retention-days: 14
+
+  report:
+    needs: [resolve, test]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'result-*'
+          path: results
+          merge-multiple: true
+
+      - name: Aggregate per key and report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(results/*.json)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No compatibility results were uploaded - nothing to report." >&2
+            exit 1
+          fi
+
+          all="$(jq -s '.' "${files[@]}")"
+          keys="$(echo "$all" | jq -r '[.[].key] | unique | .[]')"
+
+          while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            group="$(echo "$all" | jq --arg key "$key" '[.[] | select(.key == $key)]')"
+            framework="$(echo "$group" | jq -r '.[0].framework')"
+            line="$(echo "$group" | jq -r '.[0].line')"
+            tier="$(echo "$group" | jq -r '.[0].tier')"
+            version="$(echo "$group" | jq -r 'sort_by(.java) | last | .version')"
+            javaVersions="$(echo "$group" | jq -r '[.[].java] | unique | sort | map(tostring) | join(",")')"
+            failedJava="$(echo "$group" | jq -r '[.[] | select(.status=="failure") | .java] | unique | sort | map(tostring) | join(",")')"
+            gsVersion="$(echo "$group" | jq -r '.[0].greenSchedulerVersion')"
+            phase="$(echo "$group" | jq -r '.[0].consumerPhase')"
+            mainStatus="$(echo "$group" | jq -r '[.[] | select(.status=="failure") | .mainStatus] | .[0] // "unknown"')"
+            anyFailed="$(echo "$group" | jq -r '[.[] | select(.status=="failure")] | length > 0')"
+
+            status="success"
+            if [ "$anyFailed" = "true" ]; then
+              status="failure"
+            fi
+
+            echo "Reporting key=$key status=$status"
+            compatibility/report-failure \
+              --framework "$framework" --line "$line" --tier "$tier" \
+              --status "$status" --version "$version" \
+              --java-versions "$javaVersions" --failed-java-versions "$failedJava" \
+              --green-scheduler-version "$gsVersion" --consumer-phase "$phase" \
+              --main-status "$mainStatus" --run-url "$RUN_URL"
+          done <<<"$keys"

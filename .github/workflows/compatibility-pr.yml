@@ -1,0 +1,124 @@
+name: Compatibility (PR)
+
+# Validates a PR against the light required-tier subset: the pinned Quarkus/Spring Boot
+# combination plus the newest required line per framework, on JDK 17 (and JDK 25 for the pinned
+# combination). Builds the library from the PR's own source - this is a source-compatibility
+# check, which is a different (and weaker) guarantee than the ecosystem monitor's binary-
+# compatibility check against the actually published artifact. See
+# docs/adr/0001-compatibility-testing-strategy.md for why both exist.
+#
+# Read-only on purpose: this workflow never opens issues (that's the monitor's job) and never
+# needs write access to anything.
+
+permissions:
+  contents: read
+
+env:
+  COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end -Dno-format"
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/build.yml'
+      - '.github/workflows/compatibility-monitor.yml'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+      - '*.adoc'
+      - '*.txt'
+      - '.all-contributorsrc'
+
+jobs:
+  resolve:
+    # Deliberately no `if` here: a job whose own condition skips it leaves
+    # needs.<job>.outputs.* as an empty string for anything depending on it, which would silently
+    # turn into an empty matrix downstream instead of a loud failure. This job always runs and
+    # decides its own scope internally.
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve PR compatibility matrix
+        id: resolve
+        run: |
+          set -euo pipefail
+          matrix="$(compatibility/resolve-matrix pr)"
+          echo "Resolved matrix:"
+          echo "$matrix" | jq .
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    name: ${{ matrix.label }}
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          path: head
+
+      - name: Setup JDK ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java }}
+          cache: 'maven'
+
+      - name: Build green-scheduler from PR head
+        working-directory: head
+        run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
+
+      - name: Test consumer against PR head
+        id: head_test
+        working-directory: head
+        continue-on-error: true
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
+
+      # Regression-aware handling: a failure here might be pre-existing on the base branch
+      # already (e.g. someone else's WIP, or a framework line that was never going to work), in
+      # which case blocking this unrelated PR on it would just be noise. Only a combination that
+      # passes on the base branch but fails on the PR head is treated as an actual regression.
+      - name: Checkout PR base for regression check
+        if: steps.head_test.outcome == 'failure'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: base
+
+      - name: Build green-scheduler from PR base
+        if: steps.head_test.outcome == 'failure'
+        working-directory: base
+        run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
+
+      - name: Test consumer against PR base
+        id: base_test
+        if: steps.head_test.outcome == 'failure'
+        working-directory: base
+        continue-on-error: true
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
+
+      - name: Evaluate result
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.head_test.outcome }}" = "success" ]; then
+            echo "${{ matrix.label }}: passes on PR head." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "${{ steps.base_test.outcome }}" = "success" ]; then
+            {
+              echo "### Regression: ${{ matrix.label }}"
+              echo "Fails on the PR head but passes on the base branch (\`${{ github.event.pull_request.base.ref }}\`) - looks like a real regression introduced by this PR."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          {
+            echo "### Pre-existing failure (not blocking): ${{ matrix.label }}"
+            echo "Fails on both the PR head and the base branch (\`${{ github.event.pull_request.base.ref }}\`) - not something this PR introduced, so it is not blocking it. Check the compatibility monitor's tracking issues for this line."
+          } >> "$GITHUB_STEP_SUMMARY"
