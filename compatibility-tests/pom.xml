@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Deliberately standalone: no <parent> pointing at build-parent.
+
+        These modules simulate an external consumer of the published green-scheduler artifacts, so
+        they must resolve dependencies the same way a real consumer would (from the local/remote repository,
+        against whatever framework version is requested), not through reactor resolution. Because of that
+        this module is NOT listed in the root pom's <modules> and lives outside integration-tests/ too -
+        it should never inherit build-parent's dependencyConvergence enforcer rule, formatter config or
+        junit-bom, which would fight with an arbitrary Quarkus/Spring Boot platform BOM.
+
+        Run with, for example:
+          ./mvnw -f compatibility-tests/pom.xml verify \
+              -Dquarkus.platform.version=3.39.1 \
+              -Dspring.boot.version=4.1.1 \
+              -Dgreen-scheduler.version=999-SNAPSHOT
+    -->
+    <groupId>io.carbonintensity.compatibility</groupId>
+    <artifactId>compatibility-tests</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Green Scheduler - Compatibility Test Consumers</name>
+
+    <modules>
+        <module>quarkus-app</module>
+        <module>spring-boot-app</module>
+    </modules>
+</project>
