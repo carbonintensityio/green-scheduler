@@ -1,0 +1,56 @@
+# Compatibility matrix policy: which framework lines we test and how strictly.
+#
+# This file intentionally contains no version numbers. resolve-matrix recomputes the actual
+# versions to test on every run from the "sources" below, applying the selection rule for each
+# tier. When a framework brings out a new line, or the team decides an existing line's tier should
+# change (canary -> required, or the other way around), this is the only file that needs editing -
+# see the "Beheer" section in docs/adr/0001-compatibility-testing-strategy.md for a walkthrough.
+#
+# adapter: names the resolver function in compatibility/resolve-matrix that knows how to read this
+# framework's sources and selection rules. Adding a framework means adding a block here plus a
+# matching adapter function and a directory under compatibility-tests/ - the rest of the pipeline
+# (tiering, java axis, issue keys, reporting) is generic and needs no changes.
+
+frameworks:
+  quarkus:
+    adapter: quarkus
+    sources:
+      releases: https://raw.githubusercontent.com/quarkusio/quarkusio.github.io/develop/_data/releases.yaml
+    selection:
+      # Every release line marked lts: true whose eol_date hasn't passed yet. This is what
+      # production consumers actually run, so it blocks the build on failure.
+      required: active-lts-lines
+      # The newest non-upcoming, non-LTS line ("latest stable"). It hasn't earned required status
+      # yet - a fresh line stays canary until the team makes an explicit call to promote it.
+      canary: latest-stable-non-lts-line
+
+  spring-boot:
+    adapter: spring-boot
+    sources:
+      lifecycle: https://endoflife.date/api/spring-boot.json
+      artifact-versions: https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/maven-metadata.xml
+    selection:
+      # Every line of the current major that isn't EOL yet, plus the terminal (highest-numbered)
+      # line of the previous major. That terminal line is where most consumers still sit right
+      # after a major version bump, so it stays required even once its own OSS support window has
+      # closed - dropping it the day it goes EOL would blind us to exactly the audience most likely
+      # to be affected by a regression.
+      required: active-current-major-lines-plus-terminal-previous-major
+      canary: none
+
+  # micronaut: deliberately not configured. See the "Beheer" section in
+  # docs/adr/0001-compatibility-testing-strategy.md for what adding it involves - a separate
+  # decision already tracks bringing it in.
+
+# Where the ecosystem monitor gets "the actual latest published green-scheduler artifact" from.
+# Never main - that's the whole point of the monitor workflow, see the ADR.
+published-artifact:
+  maven-metadata: https://repo1.maven.org/maven2/io/carbonintensity/green-scheduler-core/maven-metadata.xml
+
+# Java versions every resolved framework/version combination is tested against (the axis the
+# README's supported-versions table calls "Java"). Kept here rather than derived, since we're not
+# tracking a Java release-lifecycle feed the way we do for the frameworks - just our own baseline
+# plus the current latest LTS.
+java-versions:
+  - 17
+  - 25

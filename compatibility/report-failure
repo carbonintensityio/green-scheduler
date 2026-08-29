@@ -1,0 +1,291 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# report-failure - creates, updates or closes the GitHub issue tracking one compatibility key.
+#
+# A "key" is framework:minor-line:tier (e.g. "quarkus:3.33:required"), never the patch version -
+# a new patch on an already-tracked line should not open a second issue. Call this once per key
+# per monitor run, after aggregating every Java version tested for that key in this run into a
+# single --status (failure if any of them failed).
+#
+# Usage:
+#   compatibility/report-failure --framework <f> --line <l> --tier <required|canary> \
+#       --status <success|failure> --version <version-tested> --java-versions <csv> \
+#       [--failed-java-versions <csv>] --green-scheduler-version <v> --consumer-phase <phase> \
+#       --main-status <compatible|incompatible|unknown> --run-url <url> \
+#       [--repo <owner/repo>] [--dry-run]
+#
+# required tier: alerts on the first reproducible failure of a key - comments on (or reopens) an
+# existing issue, or opens a new one. A later success closes it with a short note.
+#
+# canary tier: the first failure of a key does NOT open an issue - it's recorded as a "pending"
+# comment on a single shared tracking issue (see PENDING_TRACKING_TITLE below). Only if the SAME
+# key fails again on the next scheduled run (i.e. the pending marker is still there) does this
+# script open the real alert issue - this is the "two consecutive failures" rule, using GitHub
+# issues themselves as the state store rather than an external database. A success while a pending
+# marker exists just clears the marker quietly - a single flaky RC/milestone shouldn't leave a
+# trace.
+#
+# --dry-run prints what would happen without calling the GitHub API - use this for local testing.
+
+REPO="carbonintensityio/green-scheduler"
+DRY_RUN="false"
+FRAMEWORK=""
+LINE=""
+TIER=""
+STATUS=""
+VERSION=""
+JAVA_VERSIONS=""
+FAILED_JAVA_VERSIONS=""
+GS_VERSION=""
+CONSUMER_PHASE=""
+MAIN_STATUS="unknown"
+RUN_URL=""
+
+usage() {
+    cat >&2 <<'EOF'
+Usage: report-failure --framework <f> --line <l> --tier <required|canary> --status <success|failure>
+    --version <version> --java-versions <csv> [--failed-java-versions <csv>]
+    --green-scheduler-version <v> --consumer-phase <phase> --main-status <compatible|incompatible|unknown>
+    --run-url <url> [--repo <owner/repo>] [--dry-run]
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --framework) FRAMEWORK="$2"; shift 2 ;;
+    --line) LINE="$2"; shift 2 ;;
+    --tier) TIER="$2"; shift 2 ;;
+    --status) STATUS="$2"; shift 2 ;;
+    --version) VERSION="$2"; shift 2 ;;
+    --java-versions) JAVA_VERSIONS="$2"; shift 2 ;;
+    --failed-java-versions) FAILED_JAVA_VERSIONS="$2"; shift 2 ;;
+    --green-scheduler-version) GS_VERSION="$2"; shift 2 ;;
+    --consumer-phase) CONSUMER_PHASE="$2"; shift 2 ;;
+    --main-status) MAIN_STATUS="$2"; shift 2 ;;
+    --run-url) RUN_URL="$2"; shift 2 ;;
+    --repo) REPO="$2"; shift 2 ;;
+    --dry-run) DRY_RUN="true"; shift ;;
+    *)
+        echo "report-failure: unknown argument '$1'" >&2
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+for required in FRAMEWORK LINE TIER STATUS VERSION RUN_URL; do
+    if [[ -z "${!required}" ]]; then
+        flag="$(echo "$required" | tr '[:upper:]_' '[:lower:]-')"
+        echo "report-failure: --${flag} is required" >&2
+        usage
+        exit 1
+    fi
+done
+case "$TIER" in required | canary) ;; *)
+    echo "report-failure: --tier must be 'required' or 'canary'" >&2
+    exit 1
+    ;;
+esac
+case "$STATUS" in success | failure) ;; *)
+    echo "report-failure: --status must be 'success' or 'failure'" >&2
+    exit 1
+    ;;
+esac
+
+KEY="${FRAMEWORK}:${LINE}:${TIER}"
+TODAY="$(date -u +%Y-%m-%d)"
+PENDING_TRACKING_TITLE="Compatibility monitor: pending canary observations"
+
+gh_run() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[dry-run] gh $*" >&2
+    else
+        gh "$@"
+    fi
+}
+
+# gh_run_out always executes (even in dry-run) when its result drives a read-only decision further
+# down - it never mutates anything itself.
+gh_query() {
+    gh "$@"
+}
+
+ensure_labels() {
+    gh_run label create "compatibility" --repo "$REPO" --color "5319e7" \
+        --description "Consumer-facing compatibility with a newer Java/Quarkus/Spring Boot version" --force
+    gh_run label create "automated" --repo "$REPO" --color "ededed" \
+        --description "Opened by the compatibility monitor, not a human" --force
+    gh_run label create "framework:${FRAMEWORK}" --repo "$REPO" --color "1d76db" --force
+}
+
+issue_body() {
+    local status_line="$1"
+    cat <<EOF
+Key: ${KEY}
+
+- Detected: ${TODAY}
+- green-scheduler version: ${GS_VERSION:-unknown}
+- Framework: ${FRAMEWORK} ${VERSION} (line ${LINE})
+- Java versions tested: ${JAVA_VERSIONS:-unknown}
+- Failing Java versions: ${FAILED_JAVA_VERSIONS:-none}
+- Tier: ${TIER}
+- Consumer phase: ${CONSUMER_PHASE:-unknown}
+- main branch: ${MAIN_STATUS}
+- Run: ${RUN_URL}
+
+${status_line}
+EOF
+}
+
+find_issue_by_key() {
+    # Prints the number of the most recently updated issue (any state) whose body contains this
+    # key, or nothing if none exists. Narrowed with the framework label to cut down on false
+    # positives from GitHub's tokenized text search.
+    gh_query issue list --repo "$REPO" --state all --label "framework:${FRAMEWORK}" \
+        --search "\"Key: ${KEY}\" in:body" \
+        --json number,state,updatedAt --jq 'sort_by(.updatedAt) | last | .number // empty'
+}
+
+issue_state() {
+    gh_query issue view "$1" --repo "$REPO" --json state --jq '.state'
+}
+
+open_or_update_issue() {
+    local existing
+    existing="$(find_issue_by_key || true)"
+
+    if [[ -z "$existing" ]]; then
+        ensure_labels
+        gh_run issue create --repo "$REPO" \
+            --title "Compatibility: ${FRAMEWORK} ${LINE} (${TIER}) failing" \
+            --label "compatibility" --label "automated" --label "framework:${FRAMEWORK}" \
+            --body "$(issue_body 'First reproducible failure for this key.')"
+        return
+    fi
+
+    local state
+    state="$(issue_state "$existing")"
+    if [[ "$state" == "CLOSED" ]]; then
+        gh_run issue reopen "$existing" --repo "$REPO"
+        gh_run issue comment "$existing" --repo "$REPO" \
+            --body "$(issue_body 'Regressed again after being closed as restored.')"
+    else
+        gh_run issue comment "$existing" --repo "$REPO" \
+            --body "$(issue_body 'Still failing.')"
+    fi
+}
+
+close_issue_if_open() {
+    local existing state
+    existing="$(find_issue_by_key || true)"
+    [[ -z "$existing" ]] && return 0
+    state="$(issue_state "$existing")"
+    if [[ "$state" != "CLOSED" ]]; then
+        gh_run issue comment "$existing" --repo "$REPO" \
+            --body "Compatibility restored with ${VERSION} (green-scheduler ${GS_VERSION:-unknown}, run: ${RUN_URL})."
+        gh_run issue close "$existing" --repo "$REPO"
+    fi
+}
+
+# ---- canary pending-observation tracking issue -------------------------------------------------
+
+tracking_issue_body() {
+    cat <<'EOF'
+Bookkeeping issue for the compatibility monitor - not something to action directly.
+
+Each PENDING comment below records a canary key that failed once on a scheduled run. If the same
+key fails again on the *next* scheduled run, the monitor opens a real alert issue and removes the
+comment here. If it passes instead, the comment is removed with no alert - a single broken
+RC/milestone should not leave a trace.
+EOF
+}
+
+find_or_create_tracking_issue() {
+    # Prints the tracking issue's number - or the sentinel "DRYRUN" if --dry-run had to "create"
+    # one that doesn't really exist, so callers know not to look up comments on it for real.
+    local existing
+    existing="$(gh_query issue list --repo "$REPO" --state open --label "automated" \
+        --search "\"${PENDING_TRACKING_TITLE}\" in:title" \
+        --json number,title --jq "map(select(.title == \"${PENDING_TRACKING_TITLE}\")) | .[0].number // empty")"
+    if [[ -n "$existing" ]]; then
+        echo "$existing"
+        return
+    fi
+    ensure_labels
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[dry-run] gh issue create --repo $REPO --title '$PENDING_TRACKING_TITLE' --label compatibility --label automated --body <tracking_issue_body>" >&2
+        echo "DRYRUN"
+        return
+    fi
+    local url
+    url="$(gh issue create --repo "$REPO" \
+        --title "$PENDING_TRACKING_TITLE" \
+        --label "compatibility" --label "automated" \
+        --body "$(tracking_issue_body)")"
+    echo "${url##*/}"
+}
+
+find_pending_comment() {
+    # $1: tracking issue number. Prints the numeric REST comment id of the newest PENDING comment
+    # for this key, or nothing. Deliberately uses the REST API (gh api), not `gh issue view --json
+    # comments` - the latter returns GraphQL node ids, which the comment-deletion REST endpoint
+    # below does not accept.
+    if [[ "$1" == "DRYRUN" ]]; then
+        echo ""
+        return
+    fi
+    # `gh api`'s --jq only takes a single expression (no --arg passthrough the way `gh issue
+    # view`'s does), so the key is interpolated directly - safe here since a key is always
+    # framework:line:tier, built from our own controlled inputs, never arbitrary text.
+    gh_query api "repos/${REPO}/issues/$1/comments" --paginate \
+        --jq "[.[] | select(.body | startswith(\"PENDING: ${KEY} \"))] | sort_by(.created_at) | last | .id // empty"
+}
+
+delete_comment() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[dry-run] gh api -X DELETE repos/${REPO}/issues/comments/$1" >&2
+    else
+        gh api -X DELETE "repos/${REPO}/issues/comments/$1"
+    fi
+}
+
+handle_canary_failure() {
+    local tracking pending
+    tracking="$(find_or_create_tracking_issue)"
+    pending="$(find_pending_comment "$tracking" || true)"
+
+    if [[ -n "$pending" ]]; then
+        # Second consecutive scheduled failure for this key: escalate to a real alert, then clear
+        # the pending marker so a third failure doesn't re-trigger this path.
+        open_or_update_issue
+        delete_comment "$pending"
+    else
+        gh_run issue comment "$tracking" --repo "$REPO" \
+            --body "PENDING: ${KEY} failed once on ${TODAY} (green-scheduler ${GS_VERSION:-unknown}, run: ${RUN_URL}). Will alert if this repeats on the next scheduled run."
+    fi
+}
+
+handle_canary_success() {
+    local tracking pending
+    tracking="$(find_or_create_tracking_issue)"
+    pending="$(find_pending_comment "$tracking" || true)"
+    [[ -n "$pending" ]] && delete_comment "$pending"
+    # A canary key can also have a real alert issue open from an earlier escalation - clear that
+    # too, same as for required.
+    close_issue_if_open
+}
+
+if [[ "$TIER" == "required" ]]; then
+    if [[ "$STATUS" == "failure" ]]; then
+        open_or_update_issue
+    else
+        close_issue_if_open
+    fi
+else
+    if [[ "$STATUS" == "failure" ]]; then
+        handle_canary_failure
+    else
+        handle_canary_success
+    fi
+fi

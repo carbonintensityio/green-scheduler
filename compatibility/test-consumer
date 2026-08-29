@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# test-consumer - builds and runs one compatibility-tests/ consumer app against a single
+# framework/version combination, and reports PASS or FAIL.
+#
+# Usage:
+#   compatibility/test-consumer --framework <quarkus|spring-boot> --version <framework-version> \
+#       [--green-scheduler-version <version>] [--java <label, for display only>]
+#
+# Does not install anything itself - the caller is responsible for making sure the
+# green-scheduler artifacts under test are resolvable (either already installed into the local
+# repository from PR sources, or simply published on Maven Central and left to normal dependency
+# resolution). This script only knows how to drive the two consumer apps; whether they're being
+# validated against a SNAPSHOT or a real release is the workflow's concern.
+#
+# Exit code is the build's exit code: 0 = PASS, non-zero = FAIL. On failure the tail of the Maven
+# log is printed to stdout so it shows up directly in the Actions log / step summary, and the full
+# log path is printed too.
+#
+# Note: the green-scheduler version is passed through as -Dgs.version, not
+# -Dgreen-scheduler.version - Quarkus/SmallRye Config treats every system property as a candidate
+# config value, and anything under "green-scheduler.*" collides with GreenSchedulerProperties' own
+# config root and fails validation. See compatibility-tests/quarkus-app/pom.xml.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+FRAMEWORK=""
+VERSION=""
+GS_VERSION="999-SNAPSHOT"
+JAVA_LABEL=""
+
+usage() {
+    echo "Usage: $(basename "$0") --framework <quarkus|spring-boot> --version <framework-version> [--green-scheduler-version <version>] [--java <label>]" >&2
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --framework)
+        FRAMEWORK="$2"
+        shift 2
+        ;;
+    --version)
+        VERSION="$2"
+        shift 2
+        ;;
+    --green-scheduler-version)
+        GS_VERSION="$2"
+        shift 2
+        ;;
+    --java)
+        JAVA_LABEL="$2"
+        shift 2
+        ;;
+    *)
+        echo "test-consumer: unknown argument '$1'" >&2
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+if [[ -z "$FRAMEWORK" || -z "$VERSION" ]]; then
+    usage
+    exit 1
+fi
+
+case "$FRAMEWORK" in
+quarkus)
+    MODULE="quarkus-app"
+    VERSION_PROPERTY="quarkus.platform.version"
+    ;;
+spring-boot)
+    MODULE="spring-boot-app"
+    VERSION_PROPERTY="spring.boot.version"
+    ;;
+*)
+    echo "test-consumer: unknown framework '$FRAMEWORK' (expected 'quarkus' or 'spring-boot')" >&2
+    exit 1
+    ;;
+esac
+
+MODULE_DIR="$REPO_ROOT/compatibility-tests/$MODULE"
+if [[ ! -d "$MODULE_DIR" ]]; then
+    echo "test-consumer: no such consumer module directory: $MODULE_DIR" >&2
+    exit 1
+fi
+
+LABEL_SUFFIX=""
+if [[ -n "$JAVA_LABEL" ]]; then
+    LABEL_SUFFIX=", JDK $JAVA_LABEL"
+fi
+echo "== test-consumer: $FRAMEWORK $VERSION (green-scheduler $GS_VERSION$LABEL_SUFFIX) =="
+
+LOG_FILE="$(mktemp)"
+if "$REPO_ROOT/mvnw" -f "$MODULE_DIR/pom.xml" -B --fail-at-end \
+    "-D${VERSION_PROPERTY}=${VERSION}" "-Dgs.version=${GS_VERSION}" \
+    clean verify >"$LOG_FILE" 2>&1; then
+    echo "PASS: $FRAMEWORK $VERSION (green-scheduler $GS_VERSION$LABEL_SUFFIX)"
+    rm -f "$LOG_FILE"
+    exit 0
+else
+    STATUS=$?
+    echo "FAIL: $FRAMEWORK $VERSION (green-scheduler $GS_VERSION$LABEL_SUFFIX)"
+    echo "---- build log (tail) ----"
+    tail -n 200 "$LOG_FILE"
+    echo "---- end build log (full log: $LOG_FILE) ----"
+    exit "$STATUS"
+fi

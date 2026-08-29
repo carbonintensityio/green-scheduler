@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# resolve-matrix - computes the compatibility test matrix from live release data (or a recorded
+# fixture) according to compatibility/policy.yaml, and prints it as JSON on stdout.
+#
+# Usage:
+#   compatibility/resolve-matrix <required|canary|all|pr> [--fixture <dir>] [--as-of <yyyy-mm-dd>]
+#
+#   required   every framework/version combination in the required tier, crossed with the Java
+#              versions from policy.yaml
+#   canary     every combination in the canary tier, same Java axis
+#   all        required + canary
+#   pr         the light PR-validation subset: the pinned combination (read straight out of
+#              extensions/quarkus/pom.xml and extensions/spring-boot-starter/pom.xml) plus the
+#              newest required line per framework, on JDK 17 - plus JDK 25 for the pinned
+#              combination only. Always tier "required": this is the PR gate, canaries never
+#              block a PR.
+#
+#   --fixture <dir>   read release data from a recorded snapshot instead of the network (see
+#                     compatibility/fixtures/<date>/ for the expected file names). Meant for local
+#                     development and for exercising this script without depending on the outside
+#                     world. When set, --as-of defaults to the directory's basename (fixtures are
+#                     named after the date they were captured), since "active" vs. "EOL" is only
+#                     meaningful relative to some notion of "today".
+#   --as-of <date>    override the reference date used for EOL comparisons (mostly useful together
+#                     with --fixture, but also handy to sanity-check what the matrix would have
+#                     looked like on a given day).
+#
+# Output is a single JSON object: {"include": [...]}, directly usable as a GitHub Actions
+# strategy.matrix (`strategy: matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}`). Each include
+# entry has: framework, module, line, version, java, tier, key, label. "key" is the
+# framework:line:tier identity used for issue de-duplication (see report-failure) - deliberately
+# not the patch version, so a new patch of an already-tracked line doesn't open a second issue.
+#
+# Fails hard (rather than silently emitting an empty or too-small matrix) if fewer than 2 entries
+# are produced for the requested scope - see the note in the PR description about
+# needs.<job>.outputs.<x> going empty-string silently when a job is skipped; the same instinct
+# applies here: a matrix generator should never fail quietly.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+POLICY_FILE="$SCRIPT_DIR/policy.yaml"
+
+usage() {
+    echo "Usage: $(basename "$0") <required|canary|all|pr> [--fixture <dir>] [--as-of <yyyy-mm-dd>]" >&2
+}
+
+SCOPE="${1:-}"
+if [[ -z "$SCOPE" ]]; then
+    usage
+    exit 1
+fi
+shift
+
+FIXTURE_DIR=""
+AS_OF=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --fixture)
+        FIXTURE_DIR="$2"
+        shift 2
+        ;;
+    --as-of)
+        AS_OF="$2"
+        shift 2
+        ;;
+    *)
+        echo "resolve-matrix: unknown argument '$1'" >&2
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+case "$SCOPE" in
+required | canary | all | pr) ;;
+*)
+    usage
+    exit 1
+    ;;
+esac
+
+need() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "resolve-matrix: '$1' is required but not found on PATH" >&2
+        exit 1
+    }
+}
+need jq
+if [[ -z "$FIXTURE_DIR" ]]; then
+    need yq
+    need curl
+else
+    if [[ ! -d "$FIXTURE_DIR" ]]; then
+        echo "resolve-matrix: fixture directory '$FIXTURE_DIR' does not exist" >&2
+        exit 1
+    fi
+    if [[ -z "$AS_OF" ]]; then
+        AS_OF="$(basename "$FIXTURE_DIR")"
+    fi
+fi
+if [[ -z "$AS_OF" ]]; then
+    AS_OF="$(date -u +%Y-%m-%d)"
+fi
+
+# ---- data access -----------------------------------------------------------------------------
+
+quarkus_releases_json() {
+    if [[ -n "$FIXTURE_DIR" ]]; then
+        cat "$FIXTURE_DIR/quarkus-releases.json"
+    else
+        local url
+        url=$(yq -r '.frameworks.quarkus.sources.releases' "$POLICY_FILE")
+        curl -sf "$url" | yq -o=json '.releases'
+    fi
+}
+
+spring_boot_lifecycle_json() {
+    if [[ -n "$FIXTURE_DIR" ]]; then
+        cat "$FIXTURE_DIR/spring-boot-lifecycle.json"
+    else
+        local url
+        url=$(yq -r '.frameworks.spring-boot.sources.lifecycle' "$POLICY_FILE")
+        curl -sf "$url"
+    fi
+}
+
+spring_boot_versions_json() {
+    if [[ -n "$FIXTURE_DIR" ]]; then
+        cat "$FIXTURE_DIR/spring-boot-versions.json"
+    else
+        local url
+        url=$(yq -r '.frameworks.spring-boot.sources.artifact-versions' "$POLICY_FILE")
+        curl -sf "$url" | yq -p=xml -o=json '.metadata.versioning.versions.version'
+    fi
+}
+
+# ---- adapter: quarkus -------------------------------------------------------------------------
+# Selection rules from policy.yaml: required = active-lts-lines, canary = latest-stable-non-lts-line
+
+quarkus_required_entries() {
+    quarkus_releases_json | jq -c --arg asof "$AS_OF" '
+        [ .[]
+          | select(.lts == true)
+          | select((.eol_date == null) or (.eol_date > $asof))
+          | {framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: "required"}
+        ]'
+}
+
+quarkus_canary_entries() {
+    quarkus_releases_json | jq -c '
+        [ .[]
+          | select((.upcoming // false) == false)
+          | select(.lts == false)
+          | select(.latest_patch != null)
+        ]
+        | sort_by(.version | split(".") | map(tonumber))
+        | reverse
+        | .[0:1]
+        | map({framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: "canary"})'
+}
+
+# ---- adapter: spring-boot ----------------------------------------------------------------------
+# Selection rule from policy.yaml: required = active-current-major-lines-plus-terminal-previous-major,
+# canary = none. The lifecycle API tells us *which lines* qualify; the actual patch version to test
+# is then resolved from Maven Central so we're testing what a consumer would really get, not
+# whatever endoflife.date happens to have cached.
+
+spring_boot_required_lines() {
+    spring_boot_lifecycle_json | jq -c --arg asof "$AS_OF" '
+        def maj: (.cycle | split(".")[0] | tonumber);
+        def minr: (.cycle | split(".")[1] | tonumber);
+        ( [ .[] | maj ] | max ) as $currentMajor
+        | ( [ .[] | select(maj == ($currentMajor - 1)) ] | sort_by(minr) | last ) as $terminalPrevious
+        | ( [ .[] | select(maj == $currentMajor) | select(.eol > $asof) ] ) as $activeCurrent
+        | ($activeCurrent + (if $terminalPrevious == null then [] else [$terminalPrevious] end))
+        | unique_by(.cycle)
+        | map(.cycle)'
+}
+
+# Highest non-prerelease (no -M, -RC, -CR, -SNAPSHOT suffix) version on a given minor line.
+spring_boot_latest_clean_version_for_line() {
+    local line="$1"
+    spring_boot_versions_json | jq -r --arg line "$line" '
+        [ .[]
+          | select(startswith($line + "."))
+          | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+        ]
+        | sort_by(split(".") | map(tonumber))
+        | last // empty'
+}
+
+spring_boot_required_entries() {
+    local lines line version entries="[]"
+    lines=$(spring_boot_required_lines)
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        version=$(spring_boot_latest_clean_version_for_line "$line")
+        if [[ -z "$version" ]]; then
+            echo "resolve-matrix: no published non-prerelease version found for spring-boot line '$line'" >&2
+            exit 1
+        fi
+        entries=$(jq -c --arg line "$line" --arg version "$version" \
+            '. + [{framework: "spring-boot", module: "spring-boot-app", line: $line, version: $version, tier: "required"}]' \
+            <<<"$entries")
+    done < <(jq -r '.[]' <<<"$lines")
+    echo "$entries"
+}
+
+spring_boot_canary_entries() {
+    echo "[]"
+}
+
+# ---- assembly -----------------------------------------------------------------------------------
+
+java_versions_json() {
+    yq -o=json '.java-versions' "$POLICY_FILE"
+}
+
+with_java_axis() {
+    # Crosses an array of {framework, module, line, version, tier} entries with the Java versions,
+    # and fills in the derived "key" and "label" fields.
+    local entries="$1"
+    local javas
+    javas=$(java_versions_json)
+    jq -c --argjson javas "$javas" '
+        [ .[] as $e | $javas[] as $java
+          | $e + {
+              java: $java,
+              key: ($e.framework + ":" + $e.line + ":" + $e.tier),
+              label: ($e.framework + " " + $e.version + " (JDK " + ($java | tostring) + ", " + $e.tier + ")")
+            }
+        ]' <<<"$entries"
+}
+
+pinned_version() {
+    # $1: pom.xml path, $2: property name (e.g. quarkus.version)
+    grep -m1 -oE "<${2//./\\.}>[^<]+</${2//./\\.}>" "$1" | sed -E 's/<[^>]+>//g'
+}
+
+pr_matrix() {
+    local q_pinned sb_pinned q_line sb_line
+    q_pinned=$(pinned_version "$REPO_ROOT/extensions/quarkus/pom.xml" "quarkus.version")
+    sb_pinned=$(pinned_version "$REPO_ROOT/extensions/spring-boot-starter/pom.xml" "spring.boot.version")
+    if [[ -z "$q_pinned" || -z "$sb_pinned" ]]; then
+        echo "resolve-matrix: could not read pinned quarkus/spring-boot version from the extension poms" >&2
+        exit 1
+    fi
+    q_line=$(cut -d. -f1,2 <<<"$q_pinned")
+    sb_line=$(cut -d. -f1,2 <<<"$sb_pinned")
+
+    local q_required sb_required q_newest sb_newest
+    q_required=$(quarkus_required_entries)
+    sb_required=$(spring_boot_required_entries)
+    q_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$q_required")
+    sb_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$sb_required")
+
+    jq -n -c \
+        --arg qLine "$q_line" --arg qVersion "$q_pinned" \
+        --arg sbLine "$sb_line" --arg sbVersion "$sb_pinned" \
+        --argjson qNewest "$q_newest" --argjson sbNewest "$sb_newest" '
+        [
+          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: 17},
+          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: 25},
+          ($qNewest + {java: 17}),
+          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: 17},
+          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: 25},
+          ($sbNewest + {java: 17})
+        ]
+        | map(. + {key: (.framework + ":" + .line + ":" + .tier), label: (.framework + " " + .version + " (JDK " + (.java|tostring) + ", " + .tier + ")")})
+        | unique_by([.framework, .version, .java])'
+}
+
+case "$SCOPE" in
+pr)
+    MATRIX_ENTRIES="$(pr_matrix)"
+    ;;
+required)
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' <(quarkus_required_entries) <(spring_boot_required_entries))")"
+    ;;
+canary)
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' <(quarkus_canary_entries) <(spring_boot_canary_entries))")"
+    ;;
+all)
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' \
+        <(quarkus_required_entries) <(spring_boot_required_entries) \
+        <(quarkus_canary_entries) <(spring_boot_canary_entries))")"
+    ;;
+esac
+
+COUNT=$(jq 'length' <<<"$MATRIX_ENTRIES")
+if [[ "$COUNT" -lt 2 ]]; then
+    echo "resolve-matrix: refusing to emit a matrix with fewer than 2 entries (got $COUNT) for scope '$SCOPE' as-of '$AS_OF'" >&2
+    exit 1
+fi
+
+jq -c -n --argjson matrixEntries "$MATRIX_ENTRIES" '{"include": $matrixEntries}'
