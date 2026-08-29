@@ -54,7 +54,7 @@ jobs:
 
   build:
     needs: check
-    if: needs.check.outputs.code_changed == 'true'
+    if: github.event_name != 'pull_request' || needs.check.outputs.code_changed == 'true'
     runs-on: ubuntu-latest
 
     steps:
