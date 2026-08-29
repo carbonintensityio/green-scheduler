@@ -11,6 +11,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!--
+            Deliberately fixed, not overridden per matrix.java: see the same property in
+            compatibility-tests/quarkus-app/pom.xml for why - the Java axis picks the JVM running
+            the build/tests, not the bytecode release target.
+        -->
         <maven.compiler.release>17</maven.compiler.release>
 
         <!-- Overridable from the command line, see compatibility/test-consumer -->

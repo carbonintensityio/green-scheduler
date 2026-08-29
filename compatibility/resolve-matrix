@@ -256,17 +256,26 @@ pr_matrix() {
     q_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$q_required")
     sb_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$sb_required")
 
+    # Baseline/latest Java versions come from the same policy.yaml list every other scope crosses
+    # against - not separate literals here, so bumping java-versions in one place (e.g. dropping
+    # 17, or moving to 21/25) actually changes the PR check too, instead of only the scheduled one.
+    local javas baseline_java latest_java
+    javas=$(java_versions_json)
+    baseline_java=$(jq 'min' <<<"$javas")
+    latest_java=$(jq 'max' <<<"$javas")
+
     jq -n -c \
         --arg qLine "$q_line" --arg qVersion "$q_pinned" \
         --arg sbLine "$sb_line" --arg sbVersion "$sb_pinned" \
-        --argjson qNewest "$q_newest" --argjson sbNewest "$sb_newest" '
+        --argjson qNewest "$q_newest" --argjson sbNewest "$sb_newest" \
+        --argjson baselineJava "$baseline_java" --argjson latestJava "$latest_java" '
         [
-          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: 17},
-          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: 25},
-          ($qNewest + {java: 17}),
-          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: 17},
-          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: 25},
-          ($sbNewest + {java: 17})
+          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $baselineJava},
+          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $latestJava},
+          ($qNewest + {java: $baselineJava}),
+          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $baselineJava},
+          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $latestJava},
+          ($sbNewest + {java: $baselineJava})
         ]
         | map(. + {key: (.framework + ":" + .line + ":" + .tier), label: (.framework + " " + .version + " (JDK " + (.java|tostring) + ", " + .tier + ")")})
         | unique_by([.framework, .version, .java])'
