@@ -94,12 +94,18 @@ jobs:
         working-directory: base
         run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
 
+      # Deliberately runs the head checkout's test-consumer, not base's: this script (and
+      # compatibility-tests/ itself) is tooling, not part of what's being validated here - only
+      # the library artifact just installed from base's source is what needs to be "old". Calling
+      # ./compatibility/test-consumer from inside base/ would break the moment base doesn't have
+      # this tooling yet (which for this exact PR is every run until it merges) - test-consumer
+      # would 404 with exit 127, and that get misread as "fails on base too", silently turning a
+      # real regression into a false "pre-existing failure, not blocking".
       - name: Test consumer against PR base
         id: base_test
         if: steps.head_test.outcome == 'failure'
-        working-directory: base
         continue-on-error: true
-        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
+        run: ./head/compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
 
       - name: Evaluate result
         if: always()
