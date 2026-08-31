@@ -54,6 +54,15 @@ jobs:
 
   build:
     needs: check
+    # `check` only runs for pull_request events (see its `if` above) - it needs a base ref to
+    # diff against, which a push doesn't have. On any other trigger (a push to main,
+    # workflow_dispatch, ...) `check` is skipped, and a skipped job's outputs are an empty
+    # string, not false. A bare `needs.check.outputs.code_changed == 'true'` here used to
+    # silently skip `build` on every push to main - confirmed in the Actions history, every
+    # push-triggered run before this fix shows the job skipped, for well over a year - not
+    # because anything failed, but because there was nothing to compare against. The
+    # `github.event_name != 'pull_request' ||` short-circuit is what makes every push actually
+    # build, while pull requests keep the doc-only-change optimization `check` exists for.
     if: github.event_name != 'pull_request' || needs.check.outputs.code_changed == 'true'
     runs-on: ubuntu-latest
 
