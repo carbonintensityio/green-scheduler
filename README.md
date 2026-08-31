@@ -58,23 +58,60 @@ or the following for a Quarkus-based project:
 ```
 
 or the following for a Micronaut-based project (**experimental**: the newest of the three extensions,
-not yet covered by the compatibility matrix below):
+not yet covered by the compatibility matrix below). Unlike the Spring Boot and Quarkus extensions,
+this one is split into a runtime and a build-time annotation-processor artifact that both need to be
+on the same version - import the [BOM](https://search.maven.org/artifact/io.carbonintensity/green-scheduler-bom)
+rather than pinning each one separately, so a future upgrade can't leave them out of sync:
+
+Maven:
 ```xml
-   <dependency>
-      <groupId>io.carbonintensity</groupId>
-      <artifactId>green-scheduler-micronaut</artifactId>
-      <version>0.8.3</version>
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-bom</artifactId>
+            <version>0.8.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>io.carbonintensity</groupId>
+        <artifactId>green-scheduler-micronaut</artifactId>
     </dependency>
+</dependencies>
 ```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    implementation(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    implementation("io.carbonintensity:green-scheduler-micronaut")
+}
+```
+
 The Micronaut extension processes `@GreenScheduled` at compile time, so
 `green-scheduler-micronaut-processor` must also be added as an annotation processor path, next to
-`micronaut-inject-java`, in the `maven-compiler-plugin` configuration:
+`micronaut-inject-java`. With the BOM imported above, its version can be omitted the same way
+(requires Maven Compiler Plugin 3.11.0+; Gradle always resolves it from the platform):
+
+Maven:
 ```xml
 <path>
     <groupId>io.carbonintensity</groupId>
     <artifactId>green-scheduler-micronaut-processor</artifactId>
-    <version>0.8.3</version>
 </path>
+```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    annotationProcessor(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    annotationProcessor("io.carbonintensity:green-scheduler-micronaut-processor")
+}
 ```
 
 In the application.yaml add the following config including the [API key](#requesting-an-api-key):
