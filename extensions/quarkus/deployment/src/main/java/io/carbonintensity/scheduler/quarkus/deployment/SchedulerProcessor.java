@@ -68,7 +68,6 @@ import io.quarkus.deployment.builditem.ConfigDescriptionBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
-import io.quarkus.deployment.builditem.GeneratedServiceProviderBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.gizmo2.ClassOutput;
@@ -289,12 +288,11 @@ public class SchedulerProcessor {
             SchedulerRecorder recorder, List<ScheduledBusinessMethodItem> scheduledMethods,
             BuildProducer<GeneratedClassBuildItem> generatedClasses,
             BuildProducer<GeneratedResourceBuildItem> generatedResources,
-            BuildProducer<GeneratedServiceProviderBuildItem> generatedServiceProviders,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             AnnotationProxyBuildItem annotationProxy) {
 
         List<MutableScheduledMethod> scheduledMetadata = new ArrayList<>();
-        ClassOutput classOutput = getClassOutput(generatedClasses, generatedResources, generatedServiceProviders);
+        ClassOutput classOutput = getClassOutput(generatedClasses, generatedResources);
 
         for (ScheduledBusinessMethodItem scheduledMethod : scheduledMethods) {
             MutableScheduledMethod metadata = new MutableScheduledMethod();
@@ -319,8 +317,7 @@ public class SchedulerProcessor {
     }
 
     private static @NonNull ClassOutput getClassOutput(BuildProducer<GeneratedClassBuildItem> generatedClasses,
-            BuildProducer<GeneratedResourceBuildItem> generatedResources,
-            BuildProducer<GeneratedServiceProviderBuildItem> generatedServiceProviders) {
+            BuildProducer<GeneratedResourceBuildItem> generatedResources) {
         Function<String, String> generatedToBaseNameFun = name -> {
             // org/acme/Foo_ScheduledInvoker_run_0000 -> org.acme.Foo
             int idx = name.indexOf(INVOKER_SUFFIX);
@@ -333,8 +330,14 @@ public class SchedulerProcessor {
             return name;
         };
 
-        return new GeneratedClassGizmo2Adaptor(generatedClasses, generatedResources,
-                generatedServiceProviders, generatedToBaseNameFun);
+        // Deliberately the 3-arg GeneratedClassGizmo2Adaptor constructor (no
+        // BuildProducer<GeneratedServiceProviderBuildItem>): we never write a
+        // META-INF/services/* resource here, so that build item is never actually produced, and
+        // this overload is present unchanged on Quarkus 3.33 LTS through 3.39+. The 4-arg
+        // overload pulls in GeneratedServiceProviderBuildItem, a class that only exists from
+        // Quarkus 3.37 onward - just referencing it in a build step's parameter list makes
+        // ExtensionLoader fail to load this processor on older Quarkus versions.
+        return new GeneratedClassGizmo2Adaptor(generatedClasses, generatedResources, generatedToBaseNameFun);
     }
 
     private String generateInvoker(ScheduledBusinessMethodItem scheduledMethod, ClassOutput classOutput) {
