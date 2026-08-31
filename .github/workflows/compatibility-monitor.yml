@@ -1,0 +1,333 @@
+name: Compatibility (ecosystem monitor)
+
+# Tests the actually PUBLISHED green-scheduler artifact (from Maven Central) against newer
+# Java/Quarkus/Spring Boot versions as they show up - not a rebuild from main. That distinction
+# matters: issue #199 was a binary incompatibility between a compiled deployment jar and a newer
+# Quarkus at augmentation time, and rebuilding against the newer version would just recompile the
+# problem away instead of reproducing it. See docs/adr/0001-compatibility-testing-strategy.md.
+#
+# Runs weekly plus on demand. On failure, opens or updates a tracking issue per
+# framework:minor-line:tier key (see compatibility/report-failure) - required tier alerts
+# immediately, canary tier only after two consecutive scheduled failures of the same key.
+
+permissions:
+  contents: read
+
+env:
+  COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end -Dno-format"
+
+on:
+  schedule:
+    # Monday, early morning UTC - deliberately not on the hour.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Which tiers to test'
+        type: choice
+        options:
+          - required
+          - canary
+          - all
+        default: all
+
+jobs:
+  resolve:
+    # Deliberately no `if` here - see compatibility-pr.yml for why. This job always runs and
+    # decides its own scope internally (workflow_dispatch's scope input, or "all" on a schedule
+    # trigger where that input doesn't exist).
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      gs_version: ${{ steps.gs_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve compatibility matrix
+        id: resolve
+        run: |
+          set -euo pipefail
+          scope="${{ github.event.inputs.scope }}"
+          if [ -z "$scope" ]; then
+            scope="all"
+          fi
+          echo "Scope: $scope"
+          matrix="$(compatibility/resolve-matrix "$scope")"
+          echo "$matrix" | jq .
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve latest published green-scheduler version
+        id: gs_version
+        run: |
+          set -euo pipefail
+          url="$(yq -r '.published-artifact.maven-metadata' compatibility/policy.yaml)"
+          version="$(curl -sf "$url" | yq -p=xml -r '.metadata.versioning.release')"
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "Could not resolve the latest published green-scheduler version from $url" >&2
+            exit 1
+          fi
+          echo "Latest published green-scheduler version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    name: ${{ matrix.label }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: main
+
+      - name: Setup JDK ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java }}
+          cache: 'maven'
+
+      # Always continue-on-error here, regardless of tier - not just for canary. GitHub Actions
+      # skips any later step whose `if:` doesn't explicitly call always()/failure() once a
+      # non-continue-on-error step has failed, even if that later step's condition only checks an
+      # outcome; a tier-conditional continue-on-error (canary only) meant a required-tier failure
+      # skipped the diagnostic steps below, so main_status stayed "unknown" for exactly the alerts
+      # that most need to know whether main is already fixed. The job still turns red for a
+      # required-tier failure - see "Fail the job for a required-tier failure" at the end of this
+      # job, which enforces that explicitly now instead of leaning on this step's own conclusion.
+      - name: Test consumer against the published release
+        id: published_test
+        continue-on-error: true
+        working-directory: main
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version ${{ needs.resolve.outputs.gs_version }} --java ${{ matrix.java }}
+
+      # Diagnostic only, and only runs when the published artifact failed: does the same
+      # combination work against main's source? Tells us whether a fix already landed (so a patch
+      # release is what's actually needed) or whether main is broken the same way.
+      - name: Build green-scheduler from main (diagnostic)
+        id: build_main
+        if: steps.published_test.outcome == 'failure'
+        continue-on-error: true
+        working-directory: main
+        run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
+
+      - name: Test consumer against main source (diagnostic)
+        id: main_test
+        if: steps.published_test.outcome == 'failure' && steps.build_main.outcome == 'success'
+        continue-on-error: true
+        working-directory: main
+        run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
+
+      - name: Record result
+        if: always()
+        run: |
+          set -euo pipefail
+          status="success"
+          if [ "${{ steps.published_test.outcome }}" = "failure" ]; then
+            status="failure"
+          fi
+
+          main_status="unknown"
+          if [ "$status" = "failure" ]; then
+            if [ "${{ steps.main_test.outcome }}" = "success" ]; then
+              main_status="compatible"
+            elif [ "${{ steps.main_test.outcome }}" = "failure" ] || [ "${{ steps.build_main.outcome }}" = "failure" ]; then
+              main_status="incompatible"
+            fi
+          fi
+
+          phase="mvn verify (Spring context load)"
+          if [ "${{ matrix.framework }}" = "quarkus" ]; then
+            phase="mvn verify (Quarkus build/augmentation)"
+          fi
+
+          mkdir -p results
+          jq -n \
+            --arg framework "${{ matrix.framework }}" \
+            --arg line "${{ matrix.line }}" \
+            --arg tier "${{ matrix.tier }}" \
+            --arg version "${{ matrix.version }}" \
+            --argjson java "${{ matrix.java }}" \
+            --arg key "${{ matrix.key }}" \
+            --arg status "$status" \
+            --arg mainStatus "$main_status" \
+            --arg phase "$phase" \
+            --arg gsVersion "${{ needs.resolve.outputs.gs_version }}" \
+            '{framework:$framework,line:$line,tier:$tier,version:$version,java:$java,key:$key,status:$status,mainStatus:$mainStatus,consumerPhase:$phase,greenSchedulerVersion:$gsVersion}' \
+            > "results/result.json"
+          cat "results/result.json"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.framework }}-${{ matrix.line }}-${{ matrix.tier }}-jdk${{ matrix.java }}
+          path: results/result.json
+          retention-days: 14
+
+      # Now that "Test consumer against the published release" always continue-on-errors (so the
+      # diagnostic steps above can run for required-tier failures too), nothing else in this job
+      # naturally fails it - this step is what still turns a required-tier break into a red run,
+      # explicitly, via always() rather than relying on a previous step's own conclusion.
+      - name: Fail the job for a required-tier failure
+        if: always() && matrix.tier == 'required' && steps.published_test.outcome == 'failure'
+        run: |
+          echo "Required-tier check failed for ${{ matrix.label }} - see 'Test consumer against the published release' above." >&2
+          exit 1
+
+  report:
+    needs: [resolve, test]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'result-*'
+          path: results
+          merge-multiple: true
+
+      - name: Aggregate per key and report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(results/*.json)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No compatibility results were uploaded - nothing to report." >&2
+            exit 1
+          fi
+
+          all="$(jq -s '.' "${files[@]}")"
+          keys="$(echo "$all" | jq -r '[.[].key] | unique | .[]')"
+
+          while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            group="$(echo "$all" | jq --arg key "$key" '[.[] | select(.key == $key)]')"
+            framework="$(echo "$group" | jq -r '.[0].framework')"
+            line="$(echo "$group" | jq -r '.[0].line')"
+            tier="$(echo "$group" | jq -r '.[0].tier')"
+            version="$(echo "$group" | jq -r 'sort_by(.java) | last | .version')"
+            javaVersions="$(echo "$group" | jq -r '[.[].java] | unique | sort | map(tostring) | join(",")')"
+            failedJava="$(echo "$group" | jq -r '[.[] | select(.status=="failure") | .java] | unique | sort | map(tostring) | join(",")')"
+            gsVersion="$(echo "$group" | jq -r '.[0].greenSchedulerVersion')"
+            phase="$(echo "$group" | jq -r '.[0].consumerPhase')"
+            mainStatus="$(echo "$group" | jq -r '[.[] | select(.status=="failure") | .mainStatus] | .[0] // "unknown"')"
+            anyFailed="$(echo "$group" | jq -r '[.[] | select(.status=="failure")] | length > 0')"
+
+            status="success"
+            if [ "$anyFailed" = "true" ]; then
+              status="failure"
+            fi
+
+            echo "Reporting key=$key status=$status"
+            compatibility/report-failure \
+              --framework "$framework" --line "$line" --tier "$tier" \
+              --status "$status" --version "$version" \
+              --java-versions "$javaVersions" --failed-java-versions "$failedJava" \
+              --green-scheduler-version "$gsVersion" --consumer-phase "$phase" \
+              --main-status "$mainStatus" --run-url "$RUN_URL"
+          done <<<"$keys"
+
+  # Best-effort, informational only: keeps README.md's supported-versions table from quietly
+  # going stale as required lines change. Deliberately its own job, not a step tacked onto
+  # `resolve` - a job-level continue-on-error here is fine (unlike on `test`) because nothing
+  # downstream depends on this job's result. Only touches the parenthetical examples ("(currently
+  # 3.27 and 3.33)") - the descriptive rule text next to them doesn't change and isn't this job's
+  # business.
+  readme-sync:
+    needs: resolve
+    if: always()
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare README's supported-versions table against the required tier
+        id: check
+        run: |
+          set -euo pipefail
+
+          oxford_join() {
+              local items=("$@")
+              local n=${#items[@]}
+              if [ "$n" -le 1 ]; then
+                  printf '%s' "${items[0]:-}"
+                  return
+              fi
+              if [ "$n" -eq 2 ]; then
+                  printf '%s and %s' "${items[0]}" "${items[1]}"
+                  return
+              fi
+              local last_idx=$((n - 1))
+              local rest=("${items[@]:0:$last_idx}")
+              local joined="" item
+              for item in "${rest[@]}"; do
+                  joined+="${item}, "
+              done
+              printf '%s and %s' "${joined%, }" "${items[$last_idx]}"
+          }
+
+          matrix="$(compatibility/resolve-matrix required)"
+
+          mapfile -t quarkus_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="quarkus") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
+          mapfile -t spring_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="spring-boot") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
+
+          # resolve-matrix's own >= 2 check counts entries across both frameworks combined, so one
+          # framework coming back empty (broken/empty upstream release data) while the other still
+          # has plenty of lines would sail past it - refuse here instead of letting oxford_join
+          # write an empty "(currently )" into README.md.
+          if [ "${#quarkus_arr[@]}" -eq 0 ]; then
+            echo "readme-sync: resolve-matrix required returned no quarkus lines - refusing to touch README.md" >&2
+            exit 1
+          fi
+          if [ "${#spring_arr[@]}" -eq 0 ]; then
+            echo "readme-sync: resolve-matrix required returned no spring-boot lines - refusing to touch README.md" >&2
+            exit 1
+          fi
+
+          quarkus_text="$(oxford_join "${quarkus_arr[@]}")"
+          spring_text="$(oxford_join "${spring_arr[@]}")"
+          echo "Currently required - quarkus: $quarkus_text / spring-boot: $spring_text"
+
+          cp README.md README.md.orig
+          sed -i -E "s/\| Quarkus \| every active LTS line \(currently [^)]*\) \|/| Quarkus | every active LTS line (currently ${quarkus_text}) |/" README.md
+          sed -i -E "s/(\| Spring Boot \| every active line of the current major, plus the last line of the previous major \(currently )[^)]*(\) \|)/\1${spring_text}\2/" README.md
+
+          if diff -q README.md.orig README.md >/dev/null; then
+            echo "README's supported-versions table already matches the required tier."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "README's supported-versions table is out of date:"
+            diff -u README.md.orig README.md || true
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          rm -f README.md.orig
+
+      - name: Open a PR with the refreshed table
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: README.md
+          commit-message: "Refresh README's supported-versions table to match the required tier"
+          branch: automated/readme-supported-versions
+          delete-branch: true
+          title: "Refresh README's supported-versions table"
+          labels: automated
+          body: |
+            The required-tier lines in `compatibility/policy.yaml` have moved since the README's
+            supported-versions table was last written. This updates only the parenthetical
+            examples - the rule text itself ("every active LTS line", etc.) doesn't change.
+
+            Opened automatically by the `Compatibility (ecosystem monitor)` workflow.

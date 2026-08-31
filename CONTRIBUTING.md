@@ -20,7 +20,6 @@ fixes, documentation, examples... But first, read this page (including the small
 - [Release your own version](#release-your-own-version)
 - [Usage](#usage)
 - [The small print](#the-small-print)
-- [Frequently Asked Questions](#frequently-asked-questions)
 
 ## Legal
 
@@ -65,7 +64,7 @@ is followed for every pull request.
 
 * We decided to disallow `@author` tags in the Javadoc: they are hard to maintain, especially in a very active project,
   and we use the Git history to track authorship. GitHub also
-  has [this nice page with your contributions](https://github.com/carbonintensityio/scheduler/graphs/contributors). For each major
+  has [this nice page with your contributions](https://github.com/carbonintensityio/green-scheduler/graphs/contributors). For each major
   scheduler release, we also publish the list of contributors in the announcement post.
 * Commits should be atomic and semantic. Please properly squash your pull requests before submitting them. Fixup commits
   can be used temporarily during the review process but things should be squashed at the end to have meaningful commits.
@@ -100,6 +99,44 @@ tab). [See the full video walkthrough](https://youtu.be/egqbx-Q-Cbg) for more de
 
 To keep the caching of non-scheduler artifacts efficient (speeding up CI), you should occasionally sync the `main` branch
 of your fork with `main` of this repo (e.g. monthly).
+
+A merge to `main` also triggers a full build, not just pull requests, so you can expect `main` to always reflect an
+actually-verified state.
+
+### Compatibility testing
+
+Next to the regular build, every PR also runs a `Compatibility (PR)` workflow. It builds the
+extensions from your branch and boots two small consumer apps under `compatibility-tests/` (one
+Quarkus, one Spring Boot) against the currently pinned framework versions plus the newest actively
+supported line of each - on JDK 17, and JDK 25 for the pinned combination. If a combination fails,
+it's also tried against the PR's base branch: if the base fails too, it's flagged as pre-existing
+and doesn't block your PR; only a combination that passes on the base but fails on your branch is
+treated as a real regression.
+
+What it does *not* check: it doesn't rebuild the library against every supported framework line
+(only the newest one, to keep PR turnaround reasonable), and it always builds from source, so it
+can't catch a binary incompatibility between a published deployment artifact and a newer framework
+at augmentation time the way the scheduled compatibility monitor does (see
+`docs/adr/0001-compatibility-testing-strategy.md`, this is exactly what issue #199 was).
+
+To run the same checks locally:
+
+```shell
+./mvnw -Dquickly install
+./mvnw -f compatibility-tests/pom.xml verify
+```
+
+or against a specific framework version, e.g. to try a Quarkus release that isn't in the matrix
+yet:
+
+```shell
+./mvnw -f compatibility-tests/quarkus-app/pom.xml verify -Dquarkus.platform.version=3.40.0
+```
+
+The full compatibility matrix (which framework lines are required vs. canary, and why) lives in
+`compatibility/policy.yaml` and is explained in the ADR mentioned above. `compatibility/README.md`
+covers how to change that policy - promoting a line from canary to required, or adding a new
+framework.
 
 ### Tests and documentation are not optional
 
@@ -155,16 +192,31 @@ and set _Class count to use import with '\*'_ to `999`. Do the same with _Names 
 
 ## Build
 
-* Clone the repository: `git clone https://github.com/carbonintensityio/scheduler.git`
-* Navigate to the directory: `cd scheduler`
-* Invoke `./mvnw -Dquickly` from the root directory
+* Clone the repository: `git clone https://github.com/carbonintensityio/green-scheduler.git`
+* Navigate to the directory: `cd green-scheduler`
+* Invoke `./mvnw -Dquickly` from the root directory as a quick sanity check
 
 ```bash
-git clone https://github.com/carbonintensityio/scheduler.git
-cd scheduler
-./mvnw verify
+git clone https://github.com/carbonintensityio/green-scheduler.git
+cd green-scheduler
+./mvnw -Dquickly
 # Wait... success!
 ```
+
+`./mvnw -Dquickly` is only a quick sanity check: it skips tests, integration tests, and the enforcer's version checks,
+so a green result here doesn't mean the change is actually verified.
+
+To run the full test suite the same way CI does, use:
+
+```bash
+./mvnw -B --settings .github/mvn-settings.xml -Dno-format verify
+```
+
+The `-Dno-format` flag matters: without it, the formatter profile silently rewrites your source files to the expected
+style instead of failing the build when it finds a formatting violation, which is not what CI does. CI itself runs
+with `-Dno-format`, so leaving it off locally means a formatting problem that would fail the build on GitHub instead
+just gets fixed on your machine without telling you.
+
 When contributing to the scheduler, it is recommended to respect the following rules.
 
 > **Note:** The `impsort-maven-plugin` uses the `.cache` directory on each module to speed up the build.
@@ -176,8 +228,8 @@ When contributing to the scheduler, it is recommended to respect the following r
 When you contribute to an extension, after having applied your changes, run:
 
 * `./mvnw -Dquickly` from the root directory to make sure you haven't broken anything obvious
-* `./mvnw -f extensions/<your-extension> clean install` to run a full build of your extension including the tests
-* `./mvnw -f integration-tests/<your-extension-its> clean install` to make sure ITs are still passing
+* `./mvnw -f extensions/<your-extension> clean install` to run a full build of your extension including the tests, e.g.
+  `./mvnw -f extensions/quarkus clean install` or `./mvnw -f extensions/spring-boot-starter clean install`
 
 **Contributing to a core artifact**
 
@@ -194,6 +246,17 @@ Thus, it is recommended to use the following approach:
 * you can create a draft pull request to keep track of your work
 * wait until the build is green in your fork (use your own judgement if it's not fully green) before marking your pull
   request as ready for review (which will trigger the scheduler CI)
+
+**Modules at a glance**
+
+| Module | What it's for | Test stack |
+|---|---|---|
+| `core` | Core scheduling engine (window scheduling logic, annotation parsing, method invocation) | JUnit 5, AssertJ, Mockito |
+| `execution-planner` | Carbon-intensity-aware planning logic and the client for the external carbon-intensity data source | JUnit 5, AssertJ, Mockito |
+| `extensions/quarkus/deployment` | Quarkus build-time processing for `@GreenScheduled` | `quarkus-junit5-internal`, REST Assured |
+| `extensions/quarkus/runtime`, `extensions/quarkus/runtime-dev` | Quarkus runtime support and dev-mode UI | no dedicated test sources |
+| `extensions/spring-boot-starter` | Spring Boot auto-configuration for `@GreenScheduled` | JUnit 5, AssertJ, Mockito |
+| `integration-tests` | Reserved for cross-framework integration tests | empty aggregator today, no submodules yet |
 
 ## Release your own version
 
@@ -219,16 +282,10 @@ To include them into your project you need to make sure to reference version `99
 
 ### Test Coverage
 
-The scheduler uses Jacoco to generate test coverage. If you would like to generate the report
-run `mvn install -Ptest-coverage`, then change into the `coverage-report` directory and run `mvn package`. The code
-coverage report will be generated in
-`target/site/jacoco/`.
+The scheduler uses Jacoco to generate test coverage. Run `mvn install jacoco:report -Ptest-coverage` in the module
+you want a report for (or with `-f ...`); the report is generated in that module's `target/site/jacoco/`.
 
-This currently does not work on Windows as it uses a shell script to copy all the classes and files into the code
-coverage module.
-
-If you just need a report for a single module, run `mvn install jacoco:report -Ptest-coverage` in that module (or
-with `-f ...`).
+An aggregated, multi-module coverage report isn't currently available.
 
 ### Check security vulnerabilities
 
@@ -239,5 +296,3 @@ so that known security vulnerabilities in the extension dependencies can be dete
 ## The small print
 
 This project is an open source project, please act responsibly, be nice, polite and enjoy!
-
-## Frequently Asked Questions

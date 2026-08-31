@@ -1,0 +1,47 @@
+name: Dependabot auto-merge
+
+# Approved, green dependency bumps used to just sit there until someone remembered to click
+# merge - that's how the queue backed up for months. This closes that gap for the routine case,
+# without removing human review for the two dependencies where a version bump has actually broken
+# us before (#199): Quarkus and Spring Boot version bumps still need an explicit approval and a
+# manual merge, same as before. Everything else - other Maven dependencies, plugins, and GitHub
+# Actions bumps - merges itself once it's approved and CI is green.
+#
+# This only takes effect once "Allow auto-merge" is turned on in the repository settings
+# (Settings > General > Pull Requests) - that's an admin-only toggle this workflow can't set
+# itself. Until then, `gh pr merge --auto` below will fail harmlessly and the PR just waits for a
+# manual merge like before.
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    # Deliberately checking the PR's author, not `github.actor` - a rebase triggered by a human
+    # commenting "@dependabot rebase" resurfaces as a pull_request event whose actor is that
+    # human, not dependabot, even though dependabot did the actual push. `github.actor` reflects
+    # who triggered this run, not who owns the PR - confirmed by testing a real rebase-by-comment
+    # against this exact condition.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Fetch dependency metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Enable auto-merge for routine bumps
+        if: |
+          steps.metadata.outputs.update-type != 'version-update:semver-major' &&
+          !contains(steps.metadata.outputs.dependency-names, 'quarkus') &&
+          !contains(steps.metadata.outputs.dependency-names, 'spring.boot') &&
+          !contains(steps.metadata.outputs.dependency-names, 'spring-boot')
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

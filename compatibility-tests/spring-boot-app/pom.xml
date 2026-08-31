@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.carbonintensity.compatibility</groupId>
+    <artifactId>compat-spring-boot-app</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Green Scheduler - Compatibility Test Consumer - Spring Boot</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!--
+            Deliberately fixed, not overridden per matrix.java: see the same property in
+            compatibility-tests/quarkus-app/pom.xml for why - the Java axis picks the JVM running
+            the build/tests, not the bytecode release target.
+        -->
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- Overridable from the command line, see compatibility/test-consumer -->
+        <spring.boot.version>3.5.14</spring.boot.version>
+        <!--
+            Deliberately not named green-scheduler.version: it would collide the same way it does
+            in compat-quarkus-app if this property name ever ends up as a system property in a
+            shared build, so both consumer apps use the same non-colliding name for consistency.
+        -->
+        <gs.version>999-SNAPSHOT</gs.version>
+
+        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-spring-boot-starter</artifactId>
+            <version>${gs.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>compat-spring-boot-app</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

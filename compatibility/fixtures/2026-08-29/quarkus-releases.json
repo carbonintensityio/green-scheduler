@@ -1,0 +1,205 @@
+[
+  {
+    "version": "3.40",
+    "lts": false,
+    "upcoming": true
+  },
+  {
+    "version": "3.39",
+    "release_date": "2026-08-26",
+    "lts": false,
+    "latest_patch": "3.39.1",
+    "latest_patch_date": "2026-08-26"
+  },
+  {
+    "version": "3.38",
+    "release_date": "2026-07-29",
+    "eol_date": "2026-08-26",
+    "lts": false,
+    "latest_patch": "3.38.3",
+    "latest_patch_date": "2026-08-19"
+  },
+  {
+    "version": "3.37",
+    "release_date": "2026-06-24",
+    "eol_date": "2026-07-29",
+    "lts": false,
+    "latest_patch": "3.37.4",
+    "latest_patch_date": "2026-07-23"
+  },
+  {
+    "version": "3.36",
+    "release_date": "2026-05-27",
+    "eol_date": null,
+    "lts": false,
+    "latest_patch": "3.36.3",
+    "latest_patch_date": "2026-06-18",
+    "link": "/blog/quarkus-3-36-1-released/"
+  },
+  {
+    "version": "3.35",
+    "release_date": "2026-05-01",
+    "eol_date": "2026-05-27",
+    "lts": false,
+    "latest_patch": "3.35.4",
+    "latest_patch_date": "2026-05-20",
+    "link": "/blog/quarkus-3-35-released/"
+  },
+  {
+    "version": "3.34",
+    "release_date": "2026-03-25",
+    "eol_date": "2026-05-01",
+    "lts": false,
+    "latest_patch": "3.34.7",
+    "latest_patch_date": "2026-05-04",
+    "link": "/blog/quarkus-3-34-released/"
+  },
+  {
+    "version": "3.33",
+    "release_date": "2026-03-25",
+    "eol_date": "2027-03-25",
+    "lts": true,
+    "latest_patch": "3.33.3.1",
+    "latest_patch_date": "2026-08-04",
+    "link": "/blog/quarkus-3-33-released/",
+    "rhbq_eol": "2028-06-30",
+    "ibm_eol": "2028-06-30"
+  },
+  {
+    "version": "3.32",
+    "release_date": "2026-02-25",
+    "eol_date": "2026-03-25",
+    "lts": false,
+    "latest_patch": "3.32.4",
+    "latest_patch_date": "2026-03-18",
+    "link": "/blog/quarkus-3-32-2-released/"
+  },
+  {
+    "version": "3.31",
+    "release_date": "2026-01-28",
+    "eol_date": "2026-02-26",
+    "lts": false,
+    "latest_patch": "3.31.4",
+    "latest_patch_date": "2026-02-18",
+    "link": "/blog/quarkus-3-31-released/"
+  },
+  {
+    "version": "3.30",
+    "release_date": "2025-11-26",
+    "eol_date": "2026-01-28",
+    "lts": false,
+    "latest_patch": "3.30.8",
+    "latest_patch_date": "2026-01-23"
+  },
+  {
+    "version": "3.29",
+    "release_date": "2025-10-29",
+    "eol_date": "2025-11-26",
+    "lts": false,
+    "latest_patch": "3.29.4",
+    "latest_patch_date": "2025-11-19"
+  },
+  {
+    "version": "3.28",
+    "release_date": "2025-09-24",
+    "eol_date": "2025-10-29",
+    "lts": false,
+    "latest_patch": "3.28.5",
+    "latest_patch_date": "2025-10-22"
+  },
+  {
+    "version": "3.27",
+    "release_date": "2025-09-24",
+    "eol_date": "2026-09-24",
+    "lts": true,
+    "latest_patch": "3.27.5.1",
+    "latest_patch_date": "2026-08-04",
+    "rhbq_eol": "2027-12-31",
+    "ibm_eol": "2027-12-31"
+  },
+  {
+    "version": "3.26",
+    "release_date": "2025-08-28",
+    "eol_date": "2025-09-24",
+    "lts": false,
+    "latest_patch": "3.26.4",
+    "latest_patch_date": "2025-09-17"
+  },
+  {
+    "version": "3.25",
+    "release_date": "2025-07-30",
+    "eol_date": "2025-08-28",
+    "lts": false,
+    "latest_patch": "3.25.4",
+    "latest_patch_date": "2025-08-20"
+  },
+  {
+    "version": "3.24",
+    "release_date": "2025-06-25",
+    "eol_date": "2025-07-30",
+    "lts": false,
+    "latest_patch": "3.24.5",
+    "latest_patch_date": "2025-07-23"
+  },
+  {
+    "version": "3.23",
+    "release_date": "2025-05-28",
+    "eol_date": "2025-06-25",
+    "lts": false,
+    "latest_patch": "3.23.4",
+    "latest_patch_date": "2025-06-19"
+  },
+  {
+    "version": "3.22",
+    "release_date": "2025-04-30",
+    "eol_date": "2025-05-28",
+    "lts": false,
+    "latest_patch": "3.22.3",
+    "latest_patch_date": "2025-05-15"
+  },
+  {
+    "version": "3.21",
+    "release_date": "2025-03-26",
+    "eol_date": "2025-04-30",
+    "lts": false,
+    "latest_patch": "3.21.4",
+    "latest_patch_date": "2025-04-24"
+  },
+  {
+    "version": "3.20",
+    "release_date": "2025-03-26",
+    "eol_date": "2026-03-28",
+    "lts": true,
+    "latest_patch": "3.20.6.2",
+    "latest_patch_date": "2026-06-17",
+    "rhbq_eol": "2027-06-30",
+    "herodevs_eol": "nes"
+  },
+  {
+    "version": "3.15",
+    "release_date": "2024-09-25",
+    "eol_date": "2025-09-25",
+    "lts": true,
+    "latest_patch": "3.15.7",
+    "latest_patch_date": "2025-09-24",
+    "rhbq_eol": "2027-03-31"
+  },
+  {
+    "version": "3.8",
+    "release_date": "2024-02-28",
+    "eol_date": "2025-02-28",
+    "lts": true,
+    "latest_patch": "3.8.6.1",
+    "latest_patch_date": "2025-02-27",
+    "rhbq_eol": "2026-06-30"
+  },
+  {
+    "version": "3.2",
+    "release_date": "2023-07-05",
+    "eol_date": "2024-07-05",
+    "lts": true,
+    "latest_patch": "3.2.12.Final",
+    "latest_patch_date": "2024-04-16",
+    "rhbq_eol": "2025-12-31"
+  }
+]

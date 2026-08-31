@@ -1,0 +1,67 @@
+name: Bug report
+description: Report something that isn't working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including steps to reproduce it if you have them.
+      placeholder: |
+        1. Go to '...'
+        2. Call '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: input
+    id: scheduler-version
+    attributes:
+      label: green-scheduler version
+      description: The version (or commit SHA / branch, if building from source) you're using.
+      placeholder: e.g. 0.8.3
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Which integration are you using?
+      options:
+        - Spring Boot starter
+        - Quarkus extension
+        - Plain Java / core
+    validations:
+      required: true
+  - type: dropdown
+    id: java-version
+    attributes:
+      label: Java runtime version
+      options:
+        - "11"
+        - "17"
+        - "21"
+        - Other (mention it below)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs/output
+      description: Paste any error messages, stack traces, or log output. This will be rendered as a code block, so no need for backticks.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Reproducer (optional)
+      description: A failing test, or a link to a minimal project that reproduces the issue. Not required, but it speeds things up a lot.
+    validations:
+      required: false
