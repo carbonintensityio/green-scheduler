@@ -37,7 +37,7 @@ jobs:
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Resolve PR compatibility matrix
         id: resolve
@@ -57,7 +57,7 @@ jobs:
     name: ${{ matrix.label }}
     steps:
       - name: Checkout PR head
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: head
 
@@ -84,7 +84,7 @@ jobs:
       # passes on the base branch but fails on the PR head is treated as an actual regression.
       - name: Checkout PR base for regression check
         if: steps.head_test.outcome == 'failure'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           path: base

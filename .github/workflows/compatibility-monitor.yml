@@ -41,7 +41,7 @@ jobs:
       matrix: ${{ steps.resolve.outputs.matrix }}
       gs_version: ${{ steps.gs_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Resolve compatibility matrix
         id: resolve
@@ -77,7 +77,7 @@ jobs:
       matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
     name: ${{ matrix.label }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: main
 
@@ -172,7 +172,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download results
         uses: actions/download-artifact@v4
