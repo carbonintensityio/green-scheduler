@@ -24,16 +24,19 @@ public class GreenSchedulerProperties {
     public static final Duration DEFAULT_OVERDUE_GRACE_PERIOD = SchedulerDefaults.DEFAULT_OVERDUE_GRACE_PERIOD;
     public static final Duration DEFAULT_SHUTDOWN_GRACE_PERIOD = SchedulerDefaults.DEFAULT_SHUTDOWN_GRACE_PERIOD;
     public static final int DEFAULT_NUMBER_OF_JOB_EXECUTORS = SchedulerDefaults.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
+    public static final int DEFAULT_MAX_CONCURRENT_PER_SLOT = SchedulerDefaults.DEFAULT_MAX_CONCURRENT_PER_SLOT;
     public static final SchedulerConfig.StartMode DEFAULT_START_MODE = SchedulerConfig.StartMode.NORMAL;
     public static final String DEFAULT_API_URL = SchedulerDefaults.DEFAULT_API_URL;
     public static final Boolean DEFAULT_ENABLED = true;
 
     @ConstructorBinding // Required to generate metadata: https://stackoverflow.com/questions/79231534/how-can-i-use-optional-values-in-spring-boot-configuration-properties
     public GreenSchedulerProperties(Boolean enabled, SchedulerConfig.StartMode startMode, Integer jobExecutors,
-            Duration overdueGracePeriod, Duration shutdownGracePeriod, String apiKey, String apiUrl) {
+            Integer maxConcurrentPerSlot, Duration overdueGracePeriod, Duration shutdownGracePeriod, String apiKey,
+            String apiUrl) {
         this.enabled = Objects.requireNonNullElse(enabled, DEFAULT_ENABLED);
         this.startMode = Objects.requireNonNullElse(startMode, DEFAULT_START_MODE);
         this.jobExecutors = Objects.requireNonNullElse(jobExecutors, DEFAULT_NUMBER_OF_JOB_EXECUTORS);
+        this.maxConcurrentPerSlot = Objects.requireNonNullElse(maxConcurrentPerSlot, DEFAULT_MAX_CONCURRENT_PER_SLOT);
         this.overdueGracePeriod = Objects.requireNonNullElse(overdueGracePeriod, DEFAULT_OVERDUE_GRACE_PERIOD);
         this.shutdownGracePeriod = Objects.requireNonNullElse(shutdownGracePeriod, DEFAULT_SHUTDOWN_GRACE_PERIOD);
         this.apiKey = apiKey;
@@ -57,6 +60,14 @@ public class GreenSchedulerProperties {
      * Number of job executors. Default 10.
      */
     private Integer jobExecutors = DEFAULT_NUMBER_OF_JOB_EXECUTORS;
+
+    /**
+     * Maximum number of jobs allowed to start at the exact same carbon-intensity slot within the same
+     * zone. Default 0 (disabled): jobs schedule independently and may land on the same moment. When set
+     * to a positive value, jobs beyond this limit for a given zone/slot are spread to the next-best slot
+     * instead, but a job's configured window always takes priority over this limit.
+     */
+    private Integer maxConcurrentPerSlot = DEFAULT_MAX_CONCURRENT_PER_SLOT;
 
     /**
      * Overdue grace period. Default 30 seconds.
@@ -94,6 +105,15 @@ public class GreenSchedulerProperties {
      */
     public Optional<Integer> getJobExecutors() {
         return Optional.ofNullable(jobExecutors);
+    }
+
+    /**
+     * Gets the maximum number of jobs allowed to start at the exact same carbon-intensity slot.
+     *
+     * @return max concurrent jobs per slot
+     */
+    public Optional<Integer> getMaxConcurrentPerSlot() {
+        return Optional.ofNullable(maxConcurrentPerSlot);
     }
 
     /**

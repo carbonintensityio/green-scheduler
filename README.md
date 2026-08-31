@@ -162,6 +162,27 @@ Refer to the [ShedLock documentation](https://github.com/lukas-krecan/ShedLock/b
 - Instructions for Spring-based application can be found [here](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#enable-and-configure-scheduled-locking-spring).
 - For Quarkus-based applications, use ShedLock's [CDI integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#cdi-integration).
 
+### Scheduling multiple jobs
+Each `@GreenScheduled` job (`Fixed` or `Successive`) is planned independently, based only on its own window,
+duration and `carbonIntensityZone`. By default, if several jobs within the same application instance target
+the same zone and their optimal windows overlap, they may all be scheduled at the exact same, greenest moment
+- there is no coordination between them out of the box.
+
+Set `green-scheduler.max-concurrent-per-slot` to a positive number to limit how many jobs are allowed to start
+at the exact same slot within the same zone. Jobs beyond that limit are automatically spread to the next-best
+slot instead (taking each job's `duration` into account), and so on for further jobs, until a slot is found
+that satisfies the limit.
+
+This is disabled by default (`0`): existing applications are unaffected unless this property is explicitly
+set, since changing when jobs fire is a deliberate scheduling decision, not something that should change
+silently on upgrade.
+
+A job's own configured window always takes priority over this limit: if every slot within the window is
+already at the limit, the job still runs at its greenest available slot in that window rather than not
+running at all (a warning is logged when this happens). This only coordinates jobs known to this application
+instance - it does not coordinate across multiple instances/replicas of the same application; combine it with
+[ShedLock](#concurrent-executions) if you also run multiple instances.
+
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
 what the [Quarkus](https://github.com/quarkusio/quarkus) community has created. Further acknowledgements can be found in the [NOTICE](NOTICE) file

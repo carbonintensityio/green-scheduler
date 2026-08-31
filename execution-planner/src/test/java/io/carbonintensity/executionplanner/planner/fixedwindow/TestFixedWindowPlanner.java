@@ -22,6 +22,8 @@ import com.cronutils.parser.CronParser;
 
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensityDataFetcher;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityJsonParser;
+import io.carbonintensity.executionplanner.spi.CarbonIntensityPlanner;
+import io.carbonintensity.executionplanner.spi.ConcurrencySlotTracker;
 
 @ExtendWith(MockitoExtension.class)
 class TestFixedWindowPlanner {
@@ -33,6 +35,73 @@ class TestFixedWindowPlanner {
     public void setup() {
         carbonIntensityDataFetcher = mock(CarbonIntensityDataFetcher.class);
         defaultCarbonIntensityScheduler = new FixedWindowPlanner(carbonIntensityDataFetcher);
+    }
+
+    private static FixedWindowPlanningConstraints constraintsFor(String identity, ZonedDateTime start, ZonedDateTime end) {
+        CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ));
+        Cron cron = cronParser.parse(String.format("%d %d %d * * ?", start.getSecond(), start.getMinute(), start.getHour()));
+        Cron cronFallback = cronParser.parse("0 0 12 * * ?");
+
+        return DefaultFixedWindowPlanningConstraints.builder()
+                .withIdentity(identity)
+                .withDuration(Duration.ofMinutes(30))
+                .withCarbonIntensityZone("NL")
+                .withCronExpression(cron)
+                .withStartAndEnd(start, end)
+                .withFallbackCronExpression(cronFallback)
+                .withTimeZoneId(ZoneId.of("UTC"))
+                .build();
+    }
+
+    @Test
+    void whenTwoJobsCompeteForTheSameSlot_thenTheSecondJobIsSpreadToTheNextBestSlot() {
+        CarbonIntensityDataFetcher sharedFetcher = mock(CarbonIntensityDataFetcher.class);
+        CarbonIntensityJsonParser parser = new CarbonIntensityJsonParser();
+        var carbonIntensity = parser.parse(ClassLoader.getSystemResourceAsStream("day-ahead-20240824-Z.json"));
+        when(sharedFetcher.fetchCarbonIntensity(any())).thenReturn(carbonIntensity);
+
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerA = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerB = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+
+        ZonedDateTime ws = ZonedDateTime.parse("2024-08-27T00:00:00Z");
+        ZonedDateTime we = ws.plusHours(6);
+        var constraintsA = constraintsFor("job-a", ws, we);
+        var constraintsB = constraintsFor("job-b", ws, we);
+
+        ZonedDateTime timeA = plannerA.getNextExecutionTime(constraintsA);
+        ZonedDateTime timeB = plannerB.getNextExecutionTime(constraintsB);
+
+        assertThat(timeA).isNotNull();
+        assertThat(timeB).isNotNull();
+        assertThat(timeB).isNotEqualTo(timeA);
+    }
+
+    @Test
+    void whenNoSlotSatisfiesTheLimit_thenTheWindowStillWinsAndJobRunsAnyway() {
+        CarbonIntensityDataFetcher sharedFetcher = mock(CarbonIntensityDataFetcher.class);
+        CarbonIntensityJsonParser parser = new CarbonIntensityJsonParser();
+        var carbonIntensity = parser.parse(ClassLoader.getSystemResourceAsStream("day-ahead-20240824-Z.json"));
+        when(sharedFetcher.fetchCarbonIntensity(any())).thenReturn(carbonIntensity);
+
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+        // window only wide enough for a single 30-minute slot, so no alternative slot can ever exist
+        ZonedDateTime ws = ZonedDateTime.parse("2024-08-27T00:00:00Z");
+        ZonedDateTime we = ws.plusMinutes(30);
+        int maxConcurrentPerSlot = 1;
+
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerA = new FixedWindowPlanner(sharedFetcher, tracker,
+                maxConcurrentPerSlot);
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerB = new FixedWindowPlanner(sharedFetcher, tracker,
+                maxConcurrentPerSlot);
+
+        ZonedDateTime timeA = plannerA.getNextExecutionTime(constraintsFor("job-a", ws, we));
+        ZonedDateTime timeB = plannerB.getNextExecutionTime(constraintsFor("job-b", ws, we));
+
+        assertThat(timeA).isNotNull();
+        assertThat(timeB).isNotNull();
+        // no room to spread within this window: both jobs still run, at the same greenest slot
+        assertThat(timeB).isEqualTo(timeA);
     }
 
     @Test
