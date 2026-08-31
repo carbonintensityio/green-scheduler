@@ -251,6 +251,22 @@ delete_comment() {
 }
 
 handle_canary_failure() {
+    # If this key already has an open alert issue from an earlier escalation, a further failure
+    # is just "still failing" - behave like required and comment on it directly, rather than
+    # falling through to the pending/two-strike logic below (which is only for the transition
+    # from "no alert yet" to "first alert"). Without this check, a third consecutive failure would
+    # incorrectly restart the pending cycle instead of updating the already-open issue.
+    local existing_alert
+    existing_alert="$(find_issue_by_key || true)"
+    if [[ -n "$existing_alert" ]]; then
+        local alert_state
+        alert_state="$(issue_state "$existing_alert")"
+        if [[ "$alert_state" != "CLOSED" ]]; then
+            open_or_update_issue
+            return
+        fi
+    fi
+
     local tracking pending
     tracking="$(find_or_create_tracking_issue)"
     pending="$(find_pending_comment "$tracking" || true)"
