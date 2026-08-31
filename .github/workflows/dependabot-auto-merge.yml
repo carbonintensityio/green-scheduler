@@ -22,7 +22,12 @@ permissions:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    # Deliberately checking the PR's author, not `github.actor` - a rebase triggered by a human
+    # commenting "@dependabot rebase" resurfaces as a pull_request event whose actor is that
+    # human, not dependabot, even though dependabot did the actual push. `github.actor` reflects
+    # who triggered this run, not who owns the PR - confirmed by testing a real rebase-by-comment
+    # against this exact condition.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
       - name: Fetch dependency metadata
         id: metadata
