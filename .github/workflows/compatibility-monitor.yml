@@ -88,15 +88,17 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: 'maven'
 
-      # Tier decides whether a failure here fails the job - required blocks (red run, alerts
-      # immediately), canary doesn't (see compatibility/report-failure for the two-strike rule
-      # that keeps a single broken RC/milestone from becoming noise). This is deliberately a
-      # step-level continue-on-error, not a job-level one: a job-level continue-on-error would make
-      # needs.test.result report "success" regardless, and the report job downstream would never
-      # see the failure at all.
+      # Always continue-on-error here, regardless of tier - not just for canary. GitHub Actions
+      # skips any later step whose `if:` doesn't explicitly call always()/failure() once a
+      # non-continue-on-error step has failed, even if that later step's condition only checks an
+      # outcome; a tier-conditional continue-on-error (canary only) meant a required-tier failure
+      # skipped the diagnostic steps below, so main_status stayed "unknown" for exactly the alerts
+      # that most need to know whether main is already fixed. The job still turns red for a
+      # required-tier failure - see "Fail the job for a required-tier failure" at the end of this
+      # job, which enforces that explicitly now instead of leaning on this step's own conclusion.
       - name: Test consumer against the published release
         id: published_test
-        continue-on-error: ${{ matrix.tier == 'canary' }}
+        continue-on-error: true
         working-directory: main
         run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version ${{ needs.resolve.outputs.gs_version }} --java ${{ matrix.java }}
 
@@ -163,6 +165,16 @@ jobs:
           name: result-${{ matrix.framework }}-${{ matrix.line }}-${{ matrix.tier }}-jdk${{ matrix.java }}
           path: results/result.json
           retention-days: 14
+
+      # Now that "Test consumer against the published release" always continue-on-errors (so the
+      # diagnostic steps above can run for required-tier failures too), nothing else in this job
+      # naturally fails it - this step is what still turns a required-tier break into a red run,
+      # explicitly, via always() rather than relying on a previous step's own conclusion.
+      - name: Fail the job for a required-tier failure
+        if: always() && matrix.tier == 'required' && steps.published_test.outcome == 'failure'
+        run: |
+          echo "Required-tier check failed for ${{ matrix.label }} - see 'Test consumer against the published release' above." >&2
+          exit 1
 
   report:
     needs: [resolve, test]
@@ -271,6 +283,19 @@ jobs:
 
           mapfile -t quarkus_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="quarkus") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
           mapfile -t spring_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="spring-boot") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
+
+          # resolve-matrix's own >= 2 check counts entries across both frameworks combined, so one
+          # framework coming back empty (broken/empty upstream release data) while the other still
+          # has plenty of lines would sail past it - refuse here instead of letting oxford_join
+          # write an empty "(currently )" into README.md.
+          if [ "${#quarkus_arr[@]}" -eq 0 ]; then
+            echo "readme-sync: resolve-matrix required returned no quarkus lines - refusing to touch README.md" >&2
+            exit 1
+          fi
+          if [ "${#spring_arr[@]}" -eq 0 ]; then
+            echo "readme-sync: resolve-matrix required returned no spring-boot lines - refusing to touch README.md" >&2
+            exit 1
+          fi
 
           quarkus_text="$(oxford_join "${quarkus_arr[@]}")"
           spring_text="$(oxford_join "${spring_arr[@]}")"

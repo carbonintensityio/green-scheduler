@@ -105,35 +105,56 @@ if [[ -z "$AS_OF" ]]; then
 fi
 
 # ---- data access -----------------------------------------------------------------------------
+# Each of these is cached to a file on first call: scope "all" resolves both the required and
+# canary rule for a framework, and spring_boot_latest_clean_version_for_line is called once per
+# matched line, so without caching a single run could hit the same URL two, three, or more times.
+# A plain bash variable can't do this - by the time these run, they're already inside a `$(...)`
+# subshell (see the "explicit if-checks" comment on pr_matrix), so anything they set in memory
+# disappears with that subshell; a file is the simplest thing that actually persists across them.
+
+CACHE_DIR="$(mktemp -d)"
+trap 'rm -rf "$CACHE_DIR"' EXIT
 
 quarkus_releases_json() {
-    if [[ -n "$FIXTURE_DIR" ]]; then
-        cat "$FIXTURE_DIR/quarkus-releases.json"
-    else
-        local url
-        url=$(yq -r '.frameworks.quarkus.sources.releases' "$POLICY_FILE")
-        curl -sf "$url" | yq -o=json '.releases'
+    local cache_file="$CACHE_DIR/quarkus-releases.json"
+    if [[ ! -s "$cache_file" ]]; then
+        if [[ -n "$FIXTURE_DIR" ]]; then
+            cat "$FIXTURE_DIR/quarkus-releases.json" >"$cache_file"
+        else
+            local url
+            url=$(yq -r '.frameworks.quarkus.sources.releases' "$POLICY_FILE")
+            curl -sf "$url" | yq -o=json '.releases' >"$cache_file"
+        fi
     fi
+    cat "$cache_file"
 }
 
 spring_boot_lifecycle_json() {
-    if [[ -n "$FIXTURE_DIR" ]]; then
-        cat "$FIXTURE_DIR/spring-boot-lifecycle.json"
-    else
-        local url
-        url=$(yq -r '.frameworks.spring-boot.sources.lifecycle' "$POLICY_FILE")
-        curl -sf "$url"
+    local cache_file="$CACHE_DIR/spring-boot-lifecycle.json"
+    if [[ ! -s "$cache_file" ]]; then
+        if [[ -n "$FIXTURE_DIR" ]]; then
+            cat "$FIXTURE_DIR/spring-boot-lifecycle.json" >"$cache_file"
+        else
+            local url
+            url=$(yq -r '.frameworks.spring-boot.sources.lifecycle' "$POLICY_FILE")
+            curl -sf "$url" >"$cache_file"
+        fi
     fi
+    cat "$cache_file"
 }
 
 spring_boot_versions_json() {
-    if [[ -n "$FIXTURE_DIR" ]]; then
-        cat "$FIXTURE_DIR/spring-boot-versions.json"
-    else
-        local url
-        url=$(yq -r '.frameworks.spring-boot.sources.artifact-versions' "$POLICY_FILE")
-        curl -sf "$url" | yq -p=xml -o=json '.metadata.versioning.versions.version'
+    local cache_file="$CACHE_DIR/spring-boot-versions.json"
+    if [[ ! -s "$cache_file" ]]; then
+        if [[ -n "$FIXTURE_DIR" ]]; then
+            cat "$FIXTURE_DIR/spring-boot-versions.json" >"$cache_file"
+        else
+            local url
+            url=$(yq -r '.frameworks.spring-boot.sources.artifact-versions' "$POLICY_FILE")
+            curl -sf "$url" | yq -p=xml -o=json '.metadata.versioning.versions.version' >"$cache_file"
+        fi
     fi
+    cat "$cache_file"
 }
 
 # ---- policy dispatch ----------------------------------------------------------------------------

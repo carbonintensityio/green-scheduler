@@ -68,12 +68,20 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: 'maven'
 
+      # Its own id and continue-on-error, same reason as head_test below: without them, a real
+      # compile failure here still correctly reddens the job (branch protection isn't bypassed),
+      # but "Test consumer against PR head" gets skipped rather than marked failure, so neither of
+      # Evaluate result's outcome == 'success' checks match and it falls through to "Pre-existing
+      # failure (not blocking)" - a misleading summary for something that's actually blocking.
       - name: Build green-scheduler from PR head
+        id: head_build
+        continue-on-error: true
         working-directory: head
         run: ./mvnw $COMMON_MAVEN_ARGS -Dquickly install
 
       - name: Test consumer against PR head
         id: head_test
+        if: steps.head_build.outcome == 'success'
         working-directory: head
         continue-on-error: true
         run: ./compatibility/test-consumer --framework ${{ matrix.framework }} --version ${{ matrix.version }} --green-scheduler-version 999-SNAPSHOT --java ${{ matrix.java }}
@@ -111,6 +119,15 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+
+          if [ "${{ steps.head_build.outcome }}" != "success" ]; then
+            {
+              echo "### Build failed: ${{ matrix.label }}"
+              echo "The library failed to build from this PR's own source for this combination - this blocks the PR."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
           if [ "${{ steps.head_test.outcome }}" = "success" ]; then
             echo "${{ matrix.label }}: passes on PR head." >> "$GITHUB_STEP_SUMMARY"
             exit 0

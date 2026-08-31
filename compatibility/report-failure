@@ -239,13 +239,20 @@ RC/milestone should not leave a trace.
 EOF
 }
 
+find_tracking_issue() {
+    # Read-only: prints the tracking issue's number if one already exists, or nothing. Never
+    # creates one - see find_or_create_tracking_issue for that. Used on the success path, where
+    # there's nothing to do at all if the tracking issue was never needed in the first place.
+    gh_query issue list --repo "$REPO" --state open --label "automated" \
+        --search "\"${PENDING_TRACKING_TITLE}\" in:title" \
+        --json number,title --jq "map(select(.title == \"${PENDING_TRACKING_TITLE}\")) | .[0].number // empty"
+}
+
 find_or_create_tracking_issue() {
     # Prints the tracking issue's number - or the sentinel "DRYRUN" if --dry-run had to "create"
     # one that doesn't really exist, so callers know not to look up comments on it for real.
     local existing
-    existing="$(gh_query issue list --repo "$REPO" --state open --label "automated" \
-        --search "\"${PENDING_TRACKING_TITLE}\" in:title" \
-        --json number,title --jq "map(select(.title == \"${PENDING_TRACKING_TITLE}\")) | .[0].number // empty")"
+    existing="$(find_tracking_issue)"
     if [[ -n "$existing" ]]; then
         echo "$existing"
         return
@@ -326,10 +333,17 @@ handle_canary_failure() {
 }
 
 handle_canary_success() {
-    local tracking pending
-    tracking="$(find_or_create_tracking_issue)"
-    pending="$(find_pending_comment "$tracking" || true)"
-    [[ -n "$pending" ]] && delete_comment "$pending"
+    # Deliberately find_tracking_issue (read-only), not find_or_create_tracking_issue: a green
+    # canary run with no history at all is the common case, not an error - creating the tracking
+    # issue just to discover there was never anything pending on it would leave a permanently open,
+    # empty "not something to action directly" issue behind after the very first passing run.
+    local tracking
+    tracking="$(find_tracking_issue)"
+    if [[ -n "$tracking" ]]; then
+        local pending
+        pending="$(find_pending_comment "$tracking" || true)"
+        [[ -n "$pending" ]] && delete_comment "$pending"
+    fi
     # A canary key can also have a real alert issue open from an earlier escalation - clear that
     # too, same as for required.
     close_issue_if_open
