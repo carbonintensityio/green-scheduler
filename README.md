@@ -174,13 +174,15 @@ The scheduler may start a process multiple times when multiple instances of the 
 (for example, on different nodes). To make sure that the process is only started once, use a solution such as 
 [ShedLock](https://github.com/lukas-krecan/ShedLock). 
 
-ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for both Spring Boot and 
+ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for Spring Boot and 
 Quarkus-based projects. For Spring Boot applications, please note that the deprecated TaskScheduler proxy mode of 
-ShedLock is not supported.
+ShedLock is not supported. ShedLock also offers official support for Micronaut, though this has not yet been
+verified against the (experimental) Micronaut extension of `green-scheduler`.
 
 Refer to the [ShedLock documentation](https://github.com/lukas-krecan/ShedLock/blob/master/README.md) for more information on how to configure and use it with scheduled jobs:
 - Instructions for Spring-based application can be found [here](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#enable-and-configure-scheduled-locking-spring).
 - For Quarkus-based applications, use ShedLock's [CDI integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#cdi-integration).
+- For Micronaut-based applications, use ShedLock's [Micronaut integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#micronaut-integration).
 
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
