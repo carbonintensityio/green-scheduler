@@ -289,12 +289,13 @@ spring_boot_canary_entries() { spring_boot_entries_for_tier canary; }
 
 # ---- adapter: micronaut --------------------------------------------------------------------------
 # Micronaut has no LTS lines; support is major-version-based (see the ADR), so the selection rule is
-# "current major + previous major" rather than an LTS filter. It also has no single Java axis it
-# crosses cleanly against: Micronaut 5 has a hard floor of Java 25, Micronaut 4 tops out at the
-# baseline Java 17 this repo otherwise assumes for everything else. So, unlike the other two
-# adapters, this one resolves its own "java" per entry up front - with_java_axis() below is taught
-# to leave such an entry alone instead of crossing it against every java-versions entry in
-# policy.yaml.
+# "every major not yet EOL" rather than an LTS filter - not a fixed "current plus previous major"
+# count, since endoflife.date shows Micronaut currently keeps three majors non-EOL at once. It also
+# has no single Java axis it crosses cleanly against: Micronaut 5 has a hard floor of Java 25,
+# Micronaut 3 and 4 run on the baseline Java 17 this repo otherwise assumes for everything else. So,
+# unlike the other two adapters, this one resolves its own "java" per entry up front -
+# with_java_axis() below is taught to leave such an entry alone instead of crossing it against every
+# java-versions entry in policy.yaml.
 
 micronaut_lifecycle_json() {
     local cache_file="$CACHE_DIR/micronaut-lifecycle.json"
@@ -340,9 +341,14 @@ micronaut_latest_clean_version_for_major() {
 
 # Java floor per major - not derivable from either source feed (Micronaut's endoflife.date entries
 # carry no "supportedJavaVersions" field the way Spring Boot's do), so it's recorded here per the
-# ADR's own note. Update this table - and re-read the ADR - if Micronaut 6 ever ships.
+# ADR's own note. Verified against each major's own docs/build baseline, not just guessed:
+# Micronaut 3 targets Java 8+ but is only asserted here down to 17 (our own baseline, and the
+# lowest version anyone has actually run this extension's compat-app against); Micronaut 4 has a
+# documented Java 17 floor; Micronaut 5 raised that floor to Java 25. Update this table - and
+# re-read the ADR - if Micronaut 6 ever ships, or if major 3 is confirmed to work below 17.
 micronaut_java_floor_for_major() {
     case "$1" in
+    3) echo 17 ;;
     4) echo 17 ;;
     5) echo 25 ;;
     *)
@@ -352,14 +358,18 @@ micronaut_java_floor_for_major() {
     esac
 }
 
-rule_active_current_and_previous_major() {
+# Every major whose lifecycle entry isn't EOL yet - deliberately not a fixed "current plus
+# previous major" count. endoflife.date's own eol field is what actually decides "still
+# supported" for every other adapter (Quarkus's active-lts-lines, Spring Boot's
+# active-current-major-lines-plus-terminal-previous-major); Micronaut gets the same treatment
+# here, just without the LTS/major-line distinction those two ecosystems have. A hardcoded count
+# of two silently dropped major 3 the first time this was written, even though Micronaut kept
+# shipping 3.x patch releases (3.10.10, 2026-07) more than three years after 4.0 - see the ADR.
+rule_active_non_eol_majors() {
     local tier="$1"
-    local majors current previous major version java entries="[]"
-    majors=$(micronaut_lifecycle_json | jq -c '[ .[] | .cycle | select(test("^[0-9]+$")) | tonumber ] | sort | reverse')
-    current=$(jq -r '.[0]' <<<"$majors")
-    previous=$(jq -r '.[1] // empty' <<<"$majors")
-    for major in "$current" "$previous"; do
-        [[ -z "$major" ]] && continue
+    local majors major version java entries="[]"
+    majors=$(micronaut_lifecycle_json | jq -c '[ .[] | select(.eol == false) | .cycle | select(test("^[0-9]+$")) | tonumber ] | sort | reverse')
+    for major in $(jq -r '.[]' <<<"$majors"); do
         version=$(micronaut_latest_clean_version_for_major "$major")
         if [[ -z "$version" ]]; then
             echo "resolve-matrix: no published non-prerelease version found for micronaut major '$major'" >&2
@@ -377,7 +387,7 @@ micronaut_entries_for_tier() {
     local tier="$1" rule
     rule="$(selection_rule micronaut "$tier")"
     case "$rule" in
-    active-current-and-previous-major) rule_active_current_and_previous_major "$tier" ;;
+    active-non-eol-majors) rule_active_non_eol_majors "$tier" ;;
     none) rule_none ;;
     *)
         echo "resolve-matrix: unknown selection rule '$rule' for frameworks.micronaut.selection.$tier in policy.yaml" >&2
