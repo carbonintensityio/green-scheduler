@@ -224,3 +224,85 @@ jobs:
               --green-scheduler-version "$gsVersion" --consumer-phase "$phase" \
               --main-status "$mainStatus" --run-url "$RUN_URL"
           done <<<"$keys"
+
+  # Best-effort, informational only: keeps README.md's supported-versions table from quietly
+  # going stale as required lines change. Deliberately its own job, not a step tacked onto
+  # `resolve` - a job-level continue-on-error here is fine (unlike on `test`) because nothing
+  # downstream depends on this job's result. Only touches the parenthetical examples ("(currently
+  # 3.27 and 3.33)") - the descriptive rule text next to them doesn't change and isn't this job's
+  # business.
+  readme-sync:
+    needs: resolve
+    if: always()
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare README's supported-versions table against the required tier
+        id: check
+        run: |
+          set -euo pipefail
+
+          oxford_join() {
+              local items=("$@")
+              local n=${#items[@]}
+              if [ "$n" -le 1 ]; then
+                  printf '%s' "${items[0]:-}"
+                  return
+              fi
+              if [ "$n" -eq 2 ]; then
+                  printf '%s and %s' "${items[0]}" "${items[1]}"
+                  return
+              fi
+              local last_idx=$((n - 1))
+              local rest=("${items[@]:0:$last_idx}")
+              local joined="" item
+              for item in "${rest[@]}"; do
+                  joined+="${item}, "
+              done
+              printf '%s and %s' "${joined%, }" "${items[$last_idx]}"
+          }
+
+          matrix="$(compatibility/resolve-matrix required)"
+
+          mapfile -t quarkus_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="quarkus") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
+          mapfile -t spring_arr < <(echo "$matrix" | jq -r '[.include[] | select(.framework=="spring-boot") | .line] | unique | sort_by(split(".") | map(tonumber)) | .[]')
+
+          quarkus_text="$(oxford_join "${quarkus_arr[@]}")"
+          spring_text="$(oxford_join "${spring_arr[@]}")"
+          echo "Currently required - quarkus: $quarkus_text / spring-boot: $spring_text"
+
+          cp README.md README.md.orig
+          sed -i -E "s/\| Quarkus \| every active LTS line \(currently [^)]*\) \|/| Quarkus | every active LTS line (currently ${quarkus_text}) |/" README.md
+          sed -i -E "s/(\| Spring Boot \| every active line of the current major, plus the last line of the previous major \(currently )[^)]*(\) \|)/\1${spring_text}\2/" README.md
+
+          if diff -q README.md.orig README.md >/dev/null; then
+            echo "README's supported-versions table already matches the required tier."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "README's supported-versions table is out of date:"
+            diff -u README.md.orig README.md || true
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          rm -f README.md.orig
+
+      - name: Open a PR with the refreshed table
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: README.md
+          commit-message: "Refresh README's supported-versions table to match the required tier"
+          branch: automated/readme-supported-versions
+          delete-branch: true
+          title: "Refresh README's supported-versions table"
+          labels: automated
+          body: |
+            The required-tier lines in `compatibility/policy.yaml` have moved since the README's
+            supported-versions table was last written. This updates only the parenthetical
+            examples - the rule text itself ("every active LTS line", etc.) doesn't change.
+
+            Opened automatically by the `Compatibility (ecosystem monitor)` workflow.
