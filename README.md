@@ -57,6 +57,26 @@ or the following for a Quarkus-based project:
     </dependency>
 ```
 
+or the following for a Micronaut-based project (**experimental**: the newest of the three extensions,
+not yet covered by the compatibility matrix below):
+```xml
+   <dependency>
+      <groupId>io.carbonintensity</groupId>
+      <artifactId>green-scheduler-micronaut</artifactId>
+      <version>0.8.3</version>
+    </dependency>
+```
+The Micronaut extension processes `@GreenScheduled` at compile time, so
+`green-scheduler-micronaut-processor` must also be added as an annotation processor path, next to
+`micronaut-inject-java`, in the `maven-compiler-plugin` configuration:
+```xml
+<path>
+    <groupId>io.carbonintensity</groupId>
+    <artifactId>green-scheduler-micronaut-processor</artifactId>
+    <version>0.8.3</version>
+</path>
+```
+
 In the application.yaml add the following config including the [API key](#requesting-an-api-key):
 
 ```yaml
