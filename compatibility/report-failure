@@ -30,6 +30,12 @@ set -euo pipefail
 
 REPO="carbonintensityio/green-scheduler"
 DRY_RUN="false"
+# Set (only) by handle_canary_failure's escalation branch, right before it calls
+# open_or_update_issue, so a newly-created alert issue gets linked as a GitHub sub-issue of the
+# canary tracking issue - turning that tracking issue into a live dashboard of open canary alarms
+# instead of each one disappearing separately into the issue list. Deliberately not touched by the
+# required-tier path: those alerts have no tracking issue to relate to.
+SUB_ISSUE_OF=""
 FRAMEWORK=""
 LINE=""
 TIER=""
@@ -157,10 +163,15 @@ open_or_update_issue() {
 
     if [[ -z "$existing" ]]; then
         ensure_labels
-        gh_run issue create --repo "$REPO" \
+        local new_issue_url
+        new_issue_url="$(gh_run issue create --repo "$REPO" \
             --title "Compatibility: ${FRAMEWORK} ${LINE} (${TIER}) failing" \
             --label "compatibility" --label "automated" --label "framework:${FRAMEWORK}" \
-            --body "$(issue_body 'First reproducible failure for this key.')"
+            --body "$(issue_body 'First reproducible failure for this key.')")"
+        echo "$new_issue_url"
+        if [[ -n "$SUB_ISSUE_OF" ]]; then
+            add_sub_issue "$SUB_ISSUE_OF" "$new_issue_url"
+        fi
         return
     fi
 
@@ -174,6 +185,29 @@ open_or_update_issue() {
         gh_run issue comment "$existing" --repo "$REPO" \
             --body "$(issue_body 'Still failing.')"
     fi
+}
+
+add_sub_issue() {
+    # $1: parent issue number, $2: URL of the (newly created) sub-issue.
+    #
+    # gh has no CLI support for sub-issues as of 2.81.0 (no flag on `issue create`/`issue edit`,
+    # no `issue` subcommand for it) - this goes through the GraphQL API directly. addSubIssue
+    # takes the parent as a node ID but conveniently accepts the child as a plain URL
+    # (subIssueUrl), so only one extra lookup (the parent's node ID) is needed.
+    local parent_number="$1" sub_issue_url="$2"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[dry-run] gh api graphql -f query='mutation { addSubIssue(input: {issueId: <node id of issue #${parent_number}>, subIssueUrl: \"${sub_issue_url:-<new issue url>}\"}) { subIssue { number } } }'" >&2
+        return
+    fi
+    local parent_node_id
+    parent_node_id="$(gh_query issue view "$parent_number" --repo "$REPO" --json id --jq '.id')"
+    gh api graphql -f query='
+        mutation($issueId: ID!, $subIssueUrl: String!) {
+            addSubIssue(input: {issueId: $issueId, subIssueUrl: $subIssueUrl}) {
+                subIssue { number }
+            }
+        }' -f issueId="$parent_node_id" -f subIssueUrl="$sub_issue_url" \
+        --jq '"linked as sub-issue #" + (.data.addSubIssue.subIssue.number | tostring) + " of #'"$parent_number"'"'
 }
 
 close_issue_if_open() {
@@ -273,8 +307,13 @@ handle_canary_failure() {
 
     if [[ -n "$pending" ]]; then
         # Second consecutive scheduled failure for this key: escalate to a real alert, then clear
-        # the pending marker so a third failure doesn't re-trigger this path.
+        # the pending marker so a third failure doesn't re-trigger this path. Link the new alert
+        # as a sub-issue of the tracking issue (only set here, only for a brand new issue - see
+        # SUB_ISSUE_OF's declaration and open_or_update_issue) so the tracking issue reads as a
+        # live dashboard of open canary alarms rather than each one vanishing into the issue list.
+        SUB_ISSUE_OF="$tracking"
         open_or_update_issue
+        SUB_ISSUE_OF=""
         delete_comment "$pending"
     else
         gh_run issue comment "$tracking" --repo "$REPO" \
