@@ -43,6 +43,26 @@ stays meaningful without us having to remember to update it by hand every quarte
 recomputes the actual version numbers from each framework's release-lifecycle feed on every run;
 `compatibility/policy.yaml` only encodes the *rule*, never a version number.
 
+### Why the pinned version isn't in required or canary
+
+The version actually pinned in the extension poms (currently Quarkus 3.38.1, Spring Boot 3.5.14)
+never shows up in `quarkus_required_entries`/`quarkus_canary_entries` or their Spring Boot
+equivalents - it isn't a lifecycle-selected line at all. Quarkus 3.38 was never an LTS line, was
+never the "latest stable" canary line either, and by the time you read this it's likely EOL in its
+own right (Quarkus 3.38 went EOL on 2026-08-26) - it doesn't fit either category, on purpose.
+
+That's not a gap, because the pinned combination is already covered two other ways. `build.yml`
+compiles the deployment module against exactly this version on every single build - a regression
+there fails the regular build with no need for the compatibility matrix at all. And
+`compatibility-pr.yml`'s `pr_matrix()` includes it explicitly and separately from the lifecycle
+selection, precisely so every PR gets one consumer-like build against exactly what we'd actually
+ship if this PR were released today.
+
+The required/canary tiers exist for a different job: catching drift after a release, when a
+framework version we didn't rebuild against changes underneath us. Feeding the pinned version into
+that same rotation would test nothing new - by definition, "what we're compiling against right
+now" cannot have drifted since itself.
+
 ### Required and canary tiers
 
 Not every line we test deserves to block anything. A line goes in the `required` tier once we've
