@@ -25,6 +25,13 @@ Path prefix → module → artifactId:
 
 Dependency direction to know when picking `-pl`: `extensions/spring-boot-starter` and `extensions/quarkus/runtime` both depend on `core`. `extensions/quarkus/deployment` and `extensions/quarkus/runtime-dev` depend on `extensions/quarkus/runtime`. `execution-planner` has no internal module dependencies. Anything under `support-projects/`, `bom/`, `build-parent/`, root `pom.xml`, or `.github/` is build infrastructure - treat it as reactor-wide and skip straight to the full verify (step 4) rather than guessing a module subset.
 
+`compatibility-tests/` and `compatibility/` are deliberately **not** part of the reactor (no `-pl` target applies, and running the full reactor `verify` proves nothing about them - see the comment at the top of `compatibility-tests/pom.xml` for why they're kept separate). If a change touches either:
+
+- `compatibility-tests/quarkus-app/` or `compatibility-tests/spring-boot-app/` - verify with `./mvnw -Dquickly install` from the repo root (to get a `999-SNAPSHOT` of whatever extension the app depends on into the local repo) followed by `./mvnw -f compatibility-tests/pom.xml verify`.
+- `compatibility/policy.yaml`, `compatibility/resolve-matrix`, `compatibility/test-consumer`, or `compatibility/report-failure` - `resolve-matrix` can be exercised offline against `compatibility/fixtures/<date>/` (see `compatibility/README.md`); `test-consumer` and `report-failure` are otherwise best checked by re-running the `Compatibility (PR)` workflow on the branch, since they're mostly thin wrappers around `mvnw`/`gh`.
+
+Treat these two as their own verification track, not as "reactor-wide" - lumping them into step 4's full verify would silently skip the thing that actually changed.
+
 ## Steps
 
 1. **Find what changed.** Run `git diff --name-only <base-branch>...HEAD` (use `main` as the base unless told otherwise) to get the list of changed files.

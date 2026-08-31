@@ -103,6 +103,41 @@ of your fork with `main` of this repo (e.g. monthly).
 A merge to `main` also triggers a full build, not just pull requests, so you can expect `main` to always reflect an
 actually-verified state.
 
+### Compatibility testing
+
+Next to the regular build, every PR also runs a `Compatibility (PR)` workflow. It builds the
+extensions from your branch and boots two small consumer apps under `compatibility-tests/` (one
+Quarkus, one Spring Boot) against the currently pinned framework versions plus the newest actively
+supported line of each - on JDK 17, and JDK 25 for the pinned combination. If a combination fails,
+it's also tried against the PR's base branch: if the base fails too, it's flagged as pre-existing
+and doesn't block your PR; only a combination that passes on the base but fails on your branch is
+treated as a real regression.
+
+What it does *not* check: it doesn't rebuild the library against every supported framework line
+(only the newest one, to keep PR turnaround reasonable), and it always builds from source, so it
+can't catch a binary incompatibility between a published deployment artifact and a newer framework
+at augmentation time the way the scheduled compatibility monitor does (see
+`docs/adr/0001-compatibility-testing-strategy.md`, this is exactly what issue #199 was).
+
+To run the same checks locally:
+
+```shell
+./mvnw -Dquickly install
+./mvnw -f compatibility-tests/pom.xml verify
+```
+
+or against a specific framework version, e.g. to try a Quarkus release that isn't in the matrix
+yet:
+
+```shell
+./mvnw -f compatibility-tests/quarkus-app/pom.xml verify -Dquarkus.platform.version=3.40.0
+```
+
+The full compatibility matrix (which framework lines are required vs. canary, and why) lives in
+`compatibility/policy.yaml` and is explained in the ADR mentioned above. `compatibility/README.md`
+covers how to change that policy - promoting a line from canary to required, or adding a new
+framework.
+
 ### Tests and documentation are not optional
 
 Don't forget to include tests in your pull requests. Also don't forget the documentation (reference documentation,

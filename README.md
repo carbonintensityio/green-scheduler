@@ -23,6 +23,18 @@ This scheduler uses carbon intensity data provided by the carbonintensity.io API
 
 The scheduler is tested with Spring, Spring Boot and Quarkus for the NL (Netherlands) carbonIntensityZone. For known issues, planned improvements, and feature requests, please refer to the issues section.
 
+## Supported versions
+
+Java, Quarkus and Spring Boot each move fast enough that "works with the version we happened to build against" isn't good enough - a scheduled compatibility check tests the published artifacts against the version lines below every week (plus JDK 25 and a canary check of whatever framework line is newest), so this table reflects what's actually verified rather than a guess:
+
+| | Required (blocks a release if broken) |
+|---|---|
+| Java | 17, 25 |
+| Quarkus | every active LTS line (currently 3.27 and 3.33) |
+| Spring Boot | every active line of the current major, plus the last line of the previous major (currently 3.5, 4.0 and 4.1) |
+
+A newer, not-yet-LTS Quarkus line is checked too, but as a canary: we want to know early if something's about to break, without blocking on a line nobody's committed to supporting yet. See `compatibility/policy.yaml` for the exact selection rules and `docs/adr/0001-compatibility-testing-strategy.md` for the reasoning behind them.
+
 ## How to build
 The build instructions are available in the [contribution guide](CONTRIBUTING.md).
 
