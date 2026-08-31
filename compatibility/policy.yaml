@@ -38,9 +38,23 @@ frameworks:
       required: active-current-major-lines-plus-terminal-previous-major
       canary: none
 
-  # micronaut: deliberately not configured. See the "Maintaining this" section in
-  # docs/adr/0001-compatibility-testing-strategy.md for what adding it involves - a separate
-  # decision already tracks bringing it in.
+  micronaut:
+    adapter: micronaut
+    sources:
+      # Micronaut has no LTS lines and no minor-line-based support policy the way Quarkus does;
+      # support is major-version-based (see docs/adr/0001-compatibility-testing-strategy.md). The
+      # lifecycle feed tells us which majors are current; the actual patch to test is resolved from
+      # Maven Central, same division of labour as the spring-boot adapter above.
+      lifecycle: https://endoflife.date/api/micronaut.json
+      artifact-versions: https://repo1.maven.org/maven2/io/micronaut/micronaut-core/maven-metadata.xml
+    selection:
+      # Experimental at launch (CIIO-250): nothing blocks a release yet. A line only moves to
+      # required after the team has actually verified it and made that call - the same path Spring
+      # Boot 4.0/4.1 went through, see "Maintaining this" below.
+      required: none
+      # The newest major plus the one before it - "active-lts-lines" doesn't translate here, since
+      # Micronaut majors aren't labelled LTS.
+      canary: active-current-and-previous-major
 
 # Where the ecosystem monitor gets "the actual latest published green-scheduler artifact" from.
 # Never main - that's the whole point of the monitor workflow, see the ADR.

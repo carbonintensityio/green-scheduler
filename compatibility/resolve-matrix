@@ -12,10 +12,13 @@ set -euo pipefail
 #   canary     every combination in the canary tier, same Java axis
 #   all        required + canary
 #   pr         the light PR-validation subset: the pinned combination (read straight out of
-#              extensions/quarkus/pom.xml and extensions/spring-boot-starter/pom.xml) plus the
-#              newest required line per framework, on JDK 17 - plus JDK 25 for the pinned
-#              combination only. Always tier "required": this is the PR gate, canaries never
-#              block a PR.
+#              extensions/quarkus/pom.xml, extensions/spring-boot-starter/pom.xml and
+#              extensions/micronaut/pom.xml) plus the newest required line per framework, on JDK 17
+#              - plus JDK 25 for the quarkus/spring-boot pinned combinations (the pinned Micronaut
+#              combination instead gets its own major's Java floor, see
+#              micronaut_java_floor_for_major). Always tier "required": this is the PR gate,
+#              canaries never block a PR - Micronaut being entirely canary today doesn't exempt its
+#              pinned combination from this check, same as the other two frameworks.
 #
 #   --fixture <dir>   read release data from a recorded snapshot instead of the network (see
 #                     compatibility/fixtures/<date>/ for the expected file names). Meant for local
@@ -284,6 +287,108 @@ spring_boot_entries_for_tier() {
 spring_boot_required_entries() { spring_boot_entries_for_tier required; }
 spring_boot_canary_entries() { spring_boot_entries_for_tier canary; }
 
+# ---- adapter: micronaut --------------------------------------------------------------------------
+# Micronaut has no LTS lines; support is major-version-based (see the ADR), so the selection rule is
+# "current major + previous major" rather than an LTS filter. It also has no single Java axis it
+# crosses cleanly against: Micronaut 5 has a hard floor of Java 25, Micronaut 4 tops out at the
+# baseline Java 17 this repo otherwise assumes for everything else. So, unlike the other two
+# adapters, this one resolves its own "java" per entry up front - with_java_axis() below is taught
+# to leave such an entry alone instead of crossing it against every java-versions entry in
+# policy.yaml.
+
+micronaut_lifecycle_json() {
+    local cache_file="$CACHE_DIR/micronaut-lifecycle.json"
+    if [[ ! -s "$cache_file" ]]; then
+        if [[ -n "$FIXTURE_DIR" ]]; then
+            cat "$FIXTURE_DIR/micronaut-lifecycle.json" >"$cache_file"
+        else
+            local url
+            url=$(yq -r '.frameworks.micronaut.sources.lifecycle' "$POLICY_FILE")
+            curl -sf "$url" >"$cache_file"
+        fi
+    fi
+    cat "$cache_file"
+}
+
+micronaut_versions_json() {
+    local cache_file="$CACHE_DIR/micronaut-versions.json"
+    if [[ ! -s "$cache_file" ]]; then
+        if [[ -n "$FIXTURE_DIR" ]]; then
+            cat "$FIXTURE_DIR/micronaut-versions.json" >"$cache_file"
+        else
+            local url
+            url=$(yq -r '.frameworks.micronaut.sources.artifact-versions' "$POLICY_FILE")
+            curl -sf "$url" | yq -p=xml -o=json '.metadata.versioning.versions.version' >"$cache_file"
+        fi
+    fi
+    cat "$cache_file"
+}
+
+# Highest non-prerelease version for a given major. Micronaut marks pre-releases with a dotted
+# qualifier (e.g. "5.2.0.RC1", "4.1.0.M1"), never a hyphen, so a plain 3-numeric-part match already
+# excludes them - same idea as spring_boot_latest_clean_version_for_line above.
+micronaut_latest_clean_version_for_major() {
+    local major="$1"
+    micronaut_versions_json | jq -r --arg major "$major" '
+        [ .[]
+          | select(startswith($major + "."))
+          | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+        ]
+        | sort_by(split(".") | map(tonumber))
+        | last // empty'
+}
+
+# Java floor per major - not derivable from either source feed (Micronaut's endoflife.date entries
+# carry no "supportedJavaVersions" field the way Spring Boot's do), so it's recorded here per the
+# ADR's own note. Update this table - and re-read the ADR - if Micronaut 6 ever ships.
+micronaut_java_floor_for_major() {
+    case "$1" in
+    4) echo 17 ;;
+    5) echo 25 ;;
+    *)
+        echo "resolve-matrix: no known Java floor for micronaut major '$1' - update micronaut_java_floor_for_major" >&2
+        exit 1
+        ;;
+    esac
+}
+
+rule_active_current_and_previous_major() {
+    local tier="$1"
+    local majors current previous major version java entries="[]"
+    majors=$(micronaut_lifecycle_json | jq -c '[ .[] | .cycle | select(test("^[0-9]+$")) | tonumber ] | sort | reverse')
+    current=$(jq -r '.[0]' <<<"$majors")
+    previous=$(jq -r '.[1] // empty' <<<"$majors")
+    for major in "$current" "$previous"; do
+        [[ -z "$major" ]] && continue
+        version=$(micronaut_latest_clean_version_for_major "$major")
+        if [[ -z "$version" ]]; then
+            echo "resolve-matrix: no published non-prerelease version found for micronaut major '$major'" >&2
+            exit 1
+        fi
+        java=$(micronaut_java_floor_for_major "$major")
+        entries=$(jq -c --arg line "$major" --arg version "$version" --arg tier "$tier" --argjson java "$java" \
+            '. + [{framework: "micronaut", module: "micronaut-app", line: $line, version: $version, tier: $tier, java: $java}]' \
+            <<<"$entries")
+    done
+    echo "$entries"
+}
+
+micronaut_entries_for_tier() {
+    local tier="$1" rule
+    rule="$(selection_rule micronaut "$tier")"
+    case "$rule" in
+    active-current-and-previous-major) rule_active_current_and_previous_major "$tier" ;;
+    none) rule_none ;;
+    *)
+        echo "resolve-matrix: unknown selection rule '$rule' for frameworks.micronaut.selection.$tier in policy.yaml" >&2
+        exit 1
+        ;;
+    esac
+}
+
+micronaut_required_entries() { micronaut_entries_for_tier required; }
+micronaut_canary_entries() { micronaut_entries_for_tier canary; }
+
 # ---- assembly -----------------------------------------------------------------------------------
 
 java_versions_json() {
@@ -292,17 +397,27 @@ java_versions_json() {
 
 with_java_axis() {
     # Crosses an array of {framework, module, line, version, tier} entries with the Java versions,
-    # and fills in the derived "key" and "label" fields.
+    # and fills in the derived "key" and "label" fields. An entry that already carries its own
+    # "java" (the micronaut adapter does this, since it can't share one Java axis across majors) is
+    # left as-is instead of being crossed again - it just gets "key"/"label" filled in.
     local entries="$1"
     local javas
     javas=$(java_versions_json)
     jq -c --argjson javas "$javas" '
-        [ .[] as $e | $javas[] as $java
-          | $e + {
-              java: $java,
-              key: ($e.framework + ":" + $e.line + ":" + $e.tier),
-              label: ($e.framework + " " + $e.version + " (JDK " + ($java | tostring) + ", " + $e.tier + ")")
-            }
+        [ .[] as $e |
+            if ($e | has("java")) then
+                $e + {
+                    key: ($e.framework + ":" + $e.line + ":" + $e.tier),
+                    label: ($e.framework + " " + $e.version + " (JDK " + ($e.java | tostring) + ", " + $e.tier + ")")
+                }
+            else
+                $javas[] as $java
+                | $e + {
+                    java: $java,
+                    key: ($e.framework + ":" + $e.line + ":" + $e.tier),
+                    label: ($e.framework + " " + $e.version + " (JDK " + ($java | tostring) + ", " + $e.tier + ")")
+                }
+            end
         ]' <<<"$entries"
 }
 
@@ -312,15 +427,19 @@ pinned_version() {
 }
 
 pr_matrix() {
-    local q_pinned sb_pinned q_line sb_line
+    local q_pinned sb_pinned m_pinned q_line sb_line m_line m_java
     q_pinned=$(pinned_version "$REPO_ROOT/extensions/quarkus/pom.xml" "quarkus.version")
     sb_pinned=$(pinned_version "$REPO_ROOT/extensions/spring-boot-starter/pom.xml" "spring.boot.version")
-    if [[ -z "$q_pinned" || -z "$sb_pinned" ]]; then
-        echo "resolve-matrix: could not read pinned quarkus/spring-boot version from the extension poms" >&2
+    m_pinned=$(pinned_version "$REPO_ROOT/extensions/micronaut/pom.xml" "micronaut.version")
+    if [[ -z "$q_pinned" || -z "$sb_pinned" || -z "$m_pinned" ]]; then
+        echo "resolve-matrix: could not read pinned quarkus/spring-boot/micronaut version from the extension poms" >&2
         exit 1
     fi
     q_line=$(cut -d. -f1,2 <<<"$q_pinned")
     sb_line=$(cut -d. -f1,2 <<<"$sb_pinned")
+    # Micronaut lines are single-number majors, not major.minor.
+    m_line=$(cut -d. -f1 <<<"$m_pinned")
+    m_java=$(micronaut_java_floor_for_major "$m_line")
 
     # All required lines, not just the newest: a regression that only breaks e.g. Quarkus 3.27
     # (while 3.33 stays fine) would otherwise slip through the PR check entirely and only surface
@@ -334,11 +453,14 @@ pr_matrix() {
     # (confirmed empirically; `shopt -s inherit_errexit` fixes it but needs bash 4.4+, which this
     # script can't assume for local runs). Without the explicit check, an unknown selection rule
     # would silently produce an empty q_required/sb_required instead of stopping the script.
-    local q_required sb_required
+    local q_required sb_required m_required
     if ! q_required=$(quarkus_required_entries); then
         exit 1
     fi
     if ! sb_required=$(spring_boot_required_entries); then
+        exit 1
+    fi
+    if ! m_required=$(micronaut_required_entries); then
         exit 1
     fi
 
@@ -350,23 +472,33 @@ pr_matrix() {
     baseline_java=$(jq 'min' <<<"$javas")
     latest_java=$(jq 'max' <<<"$javas")
 
-    local q_required_baseline sb_required_baseline
+    local q_required_baseline sb_required_baseline m_required_baseline
     q_required_baseline=$(jq -c --argjson j "$baseline_java" 'map(. + {java: $j})' <<<"$q_required")
     sb_required_baseline=$(jq -c --argjson j "$baseline_java" 'map(. + {java: $j})' <<<"$sb_required")
+    # m_required is empty today (required: none in policy.yaml until Micronaut is promoted), but
+    # resolved the same way as the other two so this keeps working unchanged once it isn't.
+    m_required_baseline=$(jq -c --argjson j "$baseline_java" 'map(. + {java: $j})' <<<"$m_required")
 
+    # The pinned Micronaut combination gets only its own major's Java floor here, not the
+    # baseline+latest pair quarkus/spring-boot get - we have no basis for claiming Micronaut 4 runs
+    # on JDK 25 or Micronaut 5 on JDK 17, so testing outside a major's floor would assert something
+    # nobody has verified. See micronaut_java_floor_for_major above.
     jq -n -c \
         --arg qLine "$q_line" --arg qVersion "$q_pinned" \
         --arg sbLine "$sb_line" --arg sbVersion "$sb_pinned" \
+        --arg mLine "$m_line" --arg mVersion "$m_pinned" --argjson mJava "$m_java" \
         --argjson qRequiredBaseline "$q_required_baseline" --argjson sbRequiredBaseline "$sb_required_baseline" \
+        --argjson mRequiredBaseline "$m_required_baseline" \
         --argjson baselineJava "$baseline_java" --argjson latestJava "$latest_java" '
         (
           [
             {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $baselineJava},
             {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $latestJava},
             {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $baselineJava},
-            {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $latestJava}
+            {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $latestJava},
+            {framework: "micronaut", module: "micronaut-app", line: $mLine, version: $mVersion, tier: "required", java: $mJava}
           ]
-          + $qRequiredBaseline + $sbRequiredBaseline
+          + $qRequiredBaseline + $sbRequiredBaseline + $mRequiredBaseline
         )
         | map(. + {key: (.framework + ":" + .line + ":" + .tier), label: (.framework + " " + .version + " (JDK " + (.java|tostring) + ", " + .tier + ")")})
         | unique_by([.framework, .version, .java])'
@@ -386,21 +518,26 @@ pr)
 required)
     Q_ENTRIES="$(quarkus_required_entries)"
     SB_ENTRIES="$(spring_boot_required_entries)"
-    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" '$a + $b')")"
+    M_ENTRIES="$(micronaut_required_entries)"
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" --argjson c "$M_ENTRIES" '$a + $b + $c')")"
     ;;
 canary)
     Q_ENTRIES="$(quarkus_canary_entries)"
     SB_ENTRIES="$(spring_boot_canary_entries)"
-    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" '$a + $b')")"
+    M_ENTRIES="$(micronaut_canary_entries)"
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" --argjson c "$M_ENTRIES" '$a + $b + $c')")"
     ;;
 all)
     Q_REQUIRED="$(quarkus_required_entries)"
     SB_REQUIRED="$(spring_boot_required_entries)"
+    M_REQUIRED="$(micronaut_required_entries)"
     Q_CANARY="$(quarkus_canary_entries)"
     SB_CANARY="$(spring_boot_canary_entries)"
+    M_CANARY="$(micronaut_canary_entries)"
     MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n \
         --argjson a "$Q_REQUIRED" --argjson b "$SB_REQUIRED" --argjson c "$Q_CANARY" --argjson d "$SB_CANARY" \
-        '$a + $b + $c + $d')")"
+        --argjson e "$M_REQUIRED" --argjson f "$M_CANARY" \
+        '$a + $b + $c + $d + $e + $f')")"
     ;;
 esac
 

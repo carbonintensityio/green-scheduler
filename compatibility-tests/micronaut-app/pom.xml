@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.carbonintensity.compatibility</groupId>
+    <artifactId>compat-micronaut-app</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Green Scheduler - Compatibility Test Consumer - Micronaut</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!--
+            Deliberately fixed, not overridden per matrix.java: see the same property in
+            compatibility-tests/quarkus-app/pom.xml for why - the Java axis picks the JVM running
+            the build/tests, not the bytecode release target. Micronaut 4's own floor is 17; a
+            Micronaut 5 run still compiles to 17 bytecode and simply executes under a JDK 25 JVM,
+            same as the other two consumer apps.
+        -->
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- Overridable from the command line, see compatibility/test-consumer -->
+        <micronaut.version>4.10.26</micronaut.version>
+        <!--
+            Deliberately not named green-scheduler.version: it would collide the same way it does
+            in compat-quarkus-app if this property name ever ends up as a system property in a
+            shared build, so all three consumer apps use the same non-colliding name for
+            consistency (Micronaut's own config binding doesn't collide here, but there's no reason
+            for this one app to be the odd one out).
+        -->
+        <gs.version>999-SNAPSHOT</gs.version>
+
+        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.micronaut</groupId>
+                <artifactId>micronaut-core-bom</artifactId>
+                <version>${micronaut.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!--
+                Unlike quarkus-bom/spring-boot-dependencies, micronaut-core-bom doesn't manage
+                junit-jupiter's version. green-scheduler-bom already does (it imports junit-bom
+                itself), and importing it here gets that for free - the same thing a real Micronaut
+                consumer of green-scheduler would likely do anyway.
+            -->
+            <dependency>
+                <groupId>io.carbonintensity</groupId>
+                <artifactId>green-scheduler-bom</artifactId>
+                <version>${gs.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-micronaut</artifactId>
+            <version>${gs.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>compat-micronaut-app</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <parameters>true</parameters>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>io.micronaut</groupId>
+                            <artifactId>micronaut-inject-java</artifactId>
+                            <version>${micronaut.version}</version>
+                        </path>
+                        <!--
+                            This is where a Micronaut consumer diverges from the Quarkus/Spring Boot
+                            ones: @GreenScheduled processing happens at compile time via this
+                            annotation processor, not at build-time augmentation or runtime
+                            reflection. Leaving it out would compile CompatibilityJob without ever
+                            exercising the code path this whole extension exists for.
+                        -->
+                        <path>
+                            <groupId>io.carbonintensity</groupId>
+                            <artifactId>green-scheduler-micronaut-processor</artifactId>
+                            <version>${gs.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

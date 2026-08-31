@@ -165,6 +165,14 @@ one of those adapters yet - that's a separate decision the team hasn't made, not
 "Maintaining this" below for what bringing it in would actually involve, since some of the
 groundwork has already been thought through.
 
+**Update (CIIO-250):** Micronaut has since been added, entirely in the canary tier - see
+`compatibility/policy.yaml`'s `frameworks.micronaut` block and the `resolve_micronaut`-style
+adapter functions in `compatibility/resolve-matrix`. The two things this section already flagged
+turned out to matter exactly as expected: the adapter uses a "current major + previous major" rule
+instead of an LTS filter, and it resolves its own Java version per entry (major 4 on 17, major 5 on
+25) rather than crossing against the shared `java-versions` axis. Promoting a line to required still
+needs the same explicit, verified decision described under "Maintaining this" below.
+
 ## Maintaining this
 
 Changing tier assignments, promoting a freshly released major to required, or adding a third
