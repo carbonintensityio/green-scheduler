@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.runtime.ImmutableScheduledMethod;
 import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
-import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 import io.carbonintensity.scheduler.runtime.SimpleScheduler;
 import io.micronaut.context.BeanContext;
+import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.processor.ExecutableMethodProcessor;
 import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.inject.BeanDefinition;
@@ -30,20 +30,18 @@ import io.micronaut.inject.ExecutableMethod;
  * invocation are produced at compile time, no runtime reflection is involved.
  */
 @Singleton
+@Requires(property = GreenSchedulerConfigurationProperties.PREFIX + ".enabled", notEquals = "false")
 public class GreenScheduledMethodProcessor implements ExecutableMethodProcessor<GreenScheduledExecutable> {
 
     private static final Logger logger = LoggerFactory.getLogger(GreenScheduledMethodProcessor.class);
 
     private final BeanContext beanContext;
     private final SimpleScheduler scheduler;
-    private final SchedulerConfig schedulerConfig;
     private final Set<String> processedMethods = ConcurrentHashMap.newKeySet();
 
-    public GreenScheduledMethodProcessor(BeanContext beanContext, SimpleScheduler scheduler,
-            SchedulerConfig schedulerConfig) {
+    public GreenScheduledMethodProcessor(BeanContext beanContext, SimpleScheduler scheduler) {
         this.beanContext = beanContext;
         this.scheduler = scheduler;
-        this.schedulerConfig = schedulerConfig;
     }
 
     @Override
@@ -56,10 +54,6 @@ public class GreenScheduledMethodProcessor implements ExecutableMethodProcessor<
         String methodDescription = declaringClassName + "#" + method.getMethodName();
         if (!processedMethods.add(methodDescription)) {
             // guards against being called more than once for the same method
-            return;
-        }
-        if (!schedulerConfig.isEnabled()) {
-            logger.info("Green scheduler is disabled, not scheduling method {}", methodDescription);
             return;
         }
         List<GreenScheduled> schedules = annotationValues.stream()

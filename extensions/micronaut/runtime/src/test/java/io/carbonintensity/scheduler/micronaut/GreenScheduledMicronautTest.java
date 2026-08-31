@@ -49,11 +49,13 @@ class GreenScheduledMicronautTest {
             assertThat(schedules.get(0).stringValue("timeZone")).contains("Europe/Amsterdam");
             assertThat(beanDefinition.findMethod("successiveJob", ScheduledExecution.class)).isPresent();
 
-            // Both business methods are registered with the green scheduler.
+            // All business methods are registered with the green scheduler, including both
+            // schedules of the repeatable-annotation job.
             Scheduler scheduler = context.getBean(Scheduler.class);
             assertThat(scheduler.getScheduledJobs())
                     .extracting(Trigger::getId)
-                    .containsExactlyInAnyOrder("fixed-window-job", "successive-job");
+                    .containsExactlyInAnyOrder("fixed-window-job", "successive-job", "repeatable-job-1",
+                            "repeatable-job-2");
 
             // And the successive job is actually invoked.
             await().atMost(Duration.ofSeconds(15))

@@ -31,13 +31,25 @@ class ExecutableMethodInvoker implements ScheduledInvoker {
     @SuppressWarnings("unchecked")
     @Override
     public CompletionStage<Void> invoke(ScheduledExecution execution) {
-        Object bean = beanContext.getBean((BeanDefinition<Object>) beanDefinition);
-        var executableMethod = (ExecutableMethod<Object, Object>) method;
-        if (expectsScheduledExecution) {
-            executableMethod.invoke(bean, execution);
-        } else {
-            executableMethod.invoke(bean);
+        try {
+            Object bean = beanContext.getBean((BeanDefinition<Object>) beanDefinition);
+            var executableMethod = (ExecutableMethod<Object, Object>) method;
+            if (expectsScheduledExecution) {
+                executableMethod.invoke(bean, execution);
+            } else {
+                executableMethod.invoke(bean);
+            }
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            return CompletableFuture.failedStage(e);
         }
-        return CompletableFuture.completedFuture(null);
+    }
+
+    // The scheduled method is invoked directly on the green scheduler's own job executor
+    // (see SimpleScheduler), never on Micronaut's event loop, so it is always blocking from
+    // Micronaut's point of view.
+    @Override
+    public boolean isBlocking() {
+        return true;
     }
 }

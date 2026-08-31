@@ -23,4 +23,12 @@ public class TestJobs {
             SUCCESSIVE_INVOCATIONS.incrementAndGet();
         }
     }
+
+    // Two repeated @GreenScheduled annotations on one method, exercising the GreenSchedules
+    // container path (GreenSchedulesAnnotationMapper) rather than the single-annotation one.
+    @GreenScheduled(identity = "repeatable-job-1", fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
+    @GreenScheduled(identity = "repeatable-job-2", fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
+    public void repeatableJob() {
+        // does nothing, scheduling is asserted via the trigger registry
+    }
 }
