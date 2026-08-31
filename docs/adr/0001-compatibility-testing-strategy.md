@@ -63,6 +63,26 @@ framework version we didn't rebuild against changes underneath us. Feeding the p
 that same rotation would test nothing new - by definition, "what we're compiling against right
 now" cannot have drifted since itself.
 
+The pin itself is the day-to-day development target, nothing more - the version `build.yml`
+compiles and tests against on every single commit. That's a different thing from "the floor we
+guarantee," which is what the required tier is for. The two axes really are independent: the
+current pin (Quarkus 3.38) was never itself an LTS line, was never the newest stable line either,
+and is by now EOL - none of that has any bearing on which lines are required.
+
+As a rule of thumb, the pin should track the active LTS line or the newest stable Quarkus/Spring
+Boot release, and should never be left sitting on a line that's gone EOL. What actually triggers
+bumping it: routine upkeep (not developing against something already EOL), a newer framework
+feature or API the extension needs, or a security fix that only landed in a newer release.
+
+One warning worth recording, because it already happened once: Quarkus and Spring Boot bumps are
+deliberately excluded from dependabot's auto-merge (see `dependabot-auto-merge.yml`) - a framework
+bump can itself cause a #199/#229-style break, so it always needs a deliberate, human look. In
+practice, that look didn't happen for months: a dozen or so proposed `quarkus.version` bumps
+between March and June sat closed, one after another, each superseded by the next one dependabot
+opened, none ever merged - the pin stayed put the whole time until it finally moved by hand, as
+part of unrelated work (#209). Keeping the pin current isn't something that happens on its own; it
+needs an active, recurring habit, not an assumption that someone will get to it.
+
 ### Required and canary tiers
 
 Not every line we test deserves to block anything. A line goes in the `required` tier once we've
@@ -79,6 +99,26 @@ loads, autoconfiguration and `@ConstructorBinding`/`@Validated` property binding
 decided to support them, so they're required from day one rather than sitting in canary first. That
 verification is a deliberate, recorded decision, not something resolve-matrix infers on its own -
 see "Maintaining this" below for how that promotion actually happens.
+
+### How the required-tier floor moves - and how it never does
+
+Before this matrix existed, there was no explicit floor at all - "supported" meant whatever
+version happened to be pinned at the time, never a decision anyone had actually made. Issue #229
+is the proof: the #199 fix (#209) broke support for Quarkus 3.33 LTS without anyone deciding that,
+or even noticing, until the required-tier check caught it.
+
+A line can only leave the required tier two ways, and both are explicit:
+
+1. It goes EOL at the vendor - the `eol_date` from the official release data passes. That's
+   calendar-driven and known ahead of time, so it doesn't need a separate team decision each time
+   it happens.
+2. A deliberate, reviewed change to `compatibility/policy.yaml`.
+
+A silent regression is never a valid third way out. If a required line breaks because of a code
+change, it stays required, the monitor keeps showing it red, and the alert issue stays open until
+a human either fixes the code or deliberately edits the policy to drop the line. #229/#231 is the
+concrete example: the mechanism surfaced a silent regression instead of quietly letting it stand,
+and the fix - not a policy change - is what closed it out.
 
 ### Two workflows, not one
 
