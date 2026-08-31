@@ -4,7 +4,7 @@
 # versions to test on every run from the "sources" below, applying the selection rule for each
 # tier. When a framework brings out a new line, or the team decides an existing line's tier should
 # change (canary -> required, or the other way around), this is the only file that needs editing -
-# see the "Beheer" section in docs/adr/0001-compatibility-testing-strategy.md for a walkthrough.
+# see the "Maintaining this" section in docs/adr/0001-compatibility-testing-strategy.md for a walkthrough.
 #
 # adapter: names the resolver function in compatibility/resolve-matrix that knows how to read this
 # framework's sources and selection rules. Adding a framework means adding a block here plus a
@@ -38,7 +38,7 @@ frameworks:
       required: active-current-major-lines-plus-terminal-previous-major
       canary: none
 
-  # micronaut: deliberately not configured. See the "Beheer" section in
+  # micronaut: deliberately not configured. See the "Maintaining this" section in
   # docs/adr/0001-compatibility-testing-strategy.md for what adding it involves - a separate
   # decision already tracks bringing it in.
 

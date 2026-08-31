@@ -141,6 +141,10 @@ Key: ${KEY}
 - Run: ${RUN_URL}
 
 ${status_line}
+
+New to this? See docs/adr/0001-compatibility-testing-strategy.md for why this exists and how the
+required/canary tiers work, and compatibility/README.md for how to act on it (promoting a line,
+changing a selection rule, adding a framework).
 EOF
 }
 

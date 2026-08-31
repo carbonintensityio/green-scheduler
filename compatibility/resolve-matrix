@@ -88,8 +88,8 @@ need() {
     }
 }
 need jq
+need yq
 if [[ -z "$FIXTURE_DIR" ]]; then
-    need yq
     need curl
 else
     if [[ ! -d "$FIXTURE_DIR" ]]; then
@@ -136,20 +136,40 @@ spring_boot_versions_json() {
     fi
 }
 
-# ---- adapter: quarkus -------------------------------------------------------------------------
-# Selection rules from policy.yaml: required = active-lts-lines, canary = latest-stable-non-lts-line
+# ---- policy dispatch ----------------------------------------------------------------------------
+# The rule *names* in policy.yaml (frameworks.<x>.selection.<tier>) are looked up here and
+# dispatched to the matching rule_* function below - this is what makes "edit policy.yaml" actually
+# change what gets tested, instead of the YAML being descriptive text a bash function quietly
+# ignores. An unknown rule name is a hard error, never a silent no-op, so a typo in policy.yaml
+# (or a rule assigned to a framework that doesn't implement it) fails loudly right here instead of
+# producing a suspiciously-empty matrix three functions away.
 
-quarkus_required_entries() {
-    quarkus_releases_json | jq -c --arg asof "$AS_OF" '
+selection_rule() {
+    # $1: framework key in policy.yaml (as it appears there, e.g. "spring-boot"), $2: tier.
+    yq -r ".frameworks.\"$1\".selection.$2" "$POLICY_FILE"
+}
+
+rule_none() {
+    echo "[]"
+}
+
+# ---- adapter: quarkus -------------------------------------------------------------------------
+
+rule_active_lts_lines() {
+    # Every release line marked lts:true whose eol_date hasn't passed yet.
+    local tier="$1"
+    quarkus_releases_json | jq -c --arg asof "$AS_OF" --arg tier "$tier" '
         [ .[]
           | select(.lts == true)
           | select((.eol_date == null) or (.eol_date > $asof))
-          | {framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: "required"}
+          | {framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: $tier}
         ]'
 }
 
-quarkus_canary_entries() {
-    quarkus_releases_json | jq -c '
+rule_latest_stable_non_lts_line() {
+    # The newest non-upcoming, non-LTS line ("latest stable").
+    local tier="$1"
+    quarkus_releases_json | jq -c --arg tier "$tier" '
         [ .[]
           | select((.upcoming // false) == false)
           | select(.lts == false)
@@ -158,14 +178,30 @@ quarkus_canary_entries() {
         | sort_by(.version | split(".") | map(tonumber))
         | reverse
         | .[0:1]
-        | map({framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: "canary"})'
+        | map({framework: "quarkus", module: "quarkus-app", line: .version, version: .latest_patch, tier: $tier})'
 }
 
+quarkus_entries_for_tier() {
+    local tier="$1" rule
+    rule="$(selection_rule quarkus "$tier")"
+    case "$rule" in
+    active-lts-lines) rule_active_lts_lines "$tier" ;;
+    latest-stable-non-lts-line) rule_latest_stable_non_lts_line "$tier" ;;
+    none) rule_none ;;
+    *)
+        echo "resolve-matrix: unknown selection rule '$rule' for frameworks.quarkus.selection.$tier in policy.yaml" >&2
+        exit 1
+        ;;
+    esac
+}
+
+quarkus_required_entries() { quarkus_entries_for_tier required; }
+quarkus_canary_entries() { quarkus_entries_for_tier canary; }
+
 # ---- adapter: spring-boot ----------------------------------------------------------------------
-# Selection rule from policy.yaml: required = active-current-major-lines-plus-terminal-previous-major,
-# canary = none. The lifecycle API tells us *which lines* qualify; the actual patch version to test
-# is then resolved from Maven Central so we're testing what a consumer would really get, not
-# whatever endoflife.date happens to have cached.
+# The lifecycle API tells us *which lines* qualify; the actual patch version to test is then
+# resolved from Maven Central so we're testing what a consumer would really get, not whatever
+# endoflife.date happens to have cached.
 
 spring_boot_required_lines() {
     spring_boot_lifecycle_json | jq -c --arg asof "$AS_OF" '
@@ -191,7 +227,8 @@ spring_boot_latest_clean_version_for_line() {
         | last // empty'
 }
 
-spring_boot_required_entries() {
+rule_active_current_major_lines_plus_terminal_previous_major() {
+    local tier="$1"
     local lines line version entries="[]"
     lines=$(spring_boot_required_lines)
     while IFS= read -r line; do
@@ -201,16 +238,30 @@ spring_boot_required_entries() {
             echo "resolve-matrix: no published non-prerelease version found for spring-boot line '$line'" >&2
             exit 1
         fi
-        entries=$(jq -c --arg line "$line" --arg version "$version" \
-            '. + [{framework: "spring-boot", module: "spring-boot-app", line: $line, version: $version, tier: "required"}]' \
+        entries=$(jq -c --arg line "$line" --arg version "$version" --arg tier "$tier" \
+            '. + [{framework: "spring-boot", module: "spring-boot-app", line: $line, version: $version, tier: $tier}]' \
             <<<"$entries")
     done < <(jq -r '.[]' <<<"$lines")
     echo "$entries"
 }
 
-spring_boot_canary_entries() {
-    echo "[]"
+spring_boot_entries_for_tier() {
+    local tier="$1" rule
+    rule="$(selection_rule spring-boot "$tier")"
+    case "$rule" in
+    active-current-major-lines-plus-terminal-previous-major)
+        rule_active_current_major_lines_plus_terminal_previous_major "$tier"
+        ;;
+    none) rule_none ;;
+    *)
+        echo "resolve-matrix: unknown selection rule '$rule' for frameworks.spring-boot.selection.$tier in policy.yaml" >&2
+        exit 1
+        ;;
+    esac
 }
+
+spring_boot_required_entries() { spring_boot_entries_for_tier required; }
+spring_boot_canary_entries() { spring_boot_entries_for_tier canary; }
 
 # ---- assembly -----------------------------------------------------------------------------------
 
@@ -250,11 +301,25 @@ pr_matrix() {
     q_line=$(cut -d. -f1,2 <<<"$q_pinned")
     sb_line=$(cut -d. -f1,2 <<<"$sb_pinned")
 
-    local q_required sb_required q_newest sb_newest
-    q_required=$(quarkus_required_entries)
-    sb_required=$(spring_boot_required_entries)
-    q_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$q_required")
-    sb_newest=$(jq -c 'sort_by(.line | split(".") | map(tonumber)) | last' <<<"$sb_required")
+    # All required lines, not just the newest: a regression that only breaks e.g. Quarkus 3.27
+    # (while 3.33 stays fine) would otherwise slip through the PR check entirely and only surface
+    # a week later from the scheduled monitor, instead of blocking the PR that caused it. Each
+    # required line is tested once, at the baseline Java version; the pinned combination below
+    # additionally gets the latest Java version too, since it's the one thing every PR builds from
+    # source anyway and the extra JDK coverage there is cheap.
+    # Explicit if-checks, not bare assignments: pr_matrix is itself invoked as
+    # MATRIX_ENTRIES="$(pr_matrix)", so these are a *nested* command substitution - bash's `set -e`
+    # does not reliably abort on a failing `var=$(cmd)` once already inside a subshell like that
+    # (confirmed empirically; `shopt -s inherit_errexit` fixes it but needs bash 4.4+, which this
+    # script can't assume for local runs). Without the explicit check, an unknown selection rule
+    # would silently produce an empty q_required/sb_required instead of stopping the script.
+    local q_required sb_required
+    if ! q_required=$(quarkus_required_entries); then
+        exit 1
+    fi
+    if ! sb_required=$(spring_boot_required_entries); then
+        exit 1
+    fi
 
     # Baseline/latest Java versions come from the same policy.yaml list every other scope crosses
     # against - not separate literals here, so bumping java-versions in one place (e.g. dropping
@@ -264,37 +329,57 @@ pr_matrix() {
     baseline_java=$(jq 'min' <<<"$javas")
     latest_java=$(jq 'max' <<<"$javas")
 
+    local q_required_baseline sb_required_baseline
+    q_required_baseline=$(jq -c --argjson j "$baseline_java" 'map(. + {java: $j})' <<<"$q_required")
+    sb_required_baseline=$(jq -c --argjson j "$baseline_java" 'map(. + {java: $j})' <<<"$sb_required")
+
     jq -n -c \
         --arg qLine "$q_line" --arg qVersion "$q_pinned" \
         --arg sbLine "$sb_line" --arg sbVersion "$sb_pinned" \
-        --argjson qNewest "$q_newest" --argjson sbNewest "$sb_newest" \
+        --argjson qRequiredBaseline "$q_required_baseline" --argjson sbRequiredBaseline "$sb_required_baseline" \
         --argjson baselineJava "$baseline_java" --argjson latestJava "$latest_java" '
-        [
-          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $baselineJava},
-          {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $latestJava},
-          ($qNewest + {java: $baselineJava}),
-          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $baselineJava},
-          {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $latestJava},
-          ($sbNewest + {java: $baselineJava})
-        ]
+        (
+          [
+            {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $baselineJava},
+            {framework: "quarkus", module: "quarkus-app", line: $qLine, version: $qVersion, tier: "required", java: $latestJava},
+            {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $baselineJava},
+            {framework: "spring-boot", module: "spring-boot-app", line: $sbLine, version: $sbVersion, tier: "required", java: $latestJava}
+          ]
+          + $qRequiredBaseline + $sbRequiredBaseline
+        )
         | map(. + {key: (.framework + ":" + .line + ":" + .tier), label: (.framework + " " + .version + " (JDK " + (.java|tostring) + ", " + .tier + ")")})
         | unique_by([.framework, .version, .java])'
 }
 
+# Each rule call below is deliberately its own bare `var=$(...)` assignment, never fed straight
+# into a pipeline or a `<(...)` process substitution: a rule that hits the "unknown selection
+# rule" exit 1 (see quarkus_entries_for_tier/spring_boot_entries_for_tier) needs `set -e` to
+# actually see that failure and abort. Process substitution exit codes are invisible to `set -e` -
+# feeding rule output straight into `jq -s add <(...) <(...)` let a failed rule silently vanish
+# into an incomplete-but-still-"successful" matrix instead of stopping the script, exactly the
+# quiet-failure this script exists to refuse elsewhere.
 case "$SCOPE" in
 pr)
     MATRIX_ENTRIES="$(pr_matrix)"
     ;;
 required)
-    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' <(quarkus_required_entries) <(spring_boot_required_entries))")"
+    Q_ENTRIES="$(quarkus_required_entries)"
+    SB_ENTRIES="$(spring_boot_required_entries)"
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" '$a + $b')")"
     ;;
 canary)
-    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' <(quarkus_canary_entries) <(spring_boot_canary_entries))")"
+    Q_ENTRIES="$(quarkus_canary_entries)"
+    SB_ENTRIES="$(spring_boot_canary_entries)"
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n --argjson a "$Q_ENTRIES" --argjson b "$SB_ENTRIES" '$a + $b')")"
     ;;
 all)
-    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -s 'add' \
-        <(quarkus_required_entries) <(spring_boot_required_entries) \
-        <(quarkus_canary_entries) <(spring_boot_canary_entries))")"
+    Q_REQUIRED="$(quarkus_required_entries)"
+    SB_REQUIRED="$(spring_boot_required_entries)"
+    Q_CANARY="$(quarkus_canary_entries)"
+    SB_CANARY="$(spring_boot_canary_entries)"
+    MATRIX_ENTRIES="$(with_java_axis "$(jq -c -n \
+        --argjson a "$Q_REQUIRED" --argjson b "$SB_REQUIRED" --argjson c "$Q_CANARY" --argjson d "$SB_CANARY" \
+        '$a + $b + $c + $d')")"
     ;;
 esac
 
