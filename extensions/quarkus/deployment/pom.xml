@@ -57,9 +57,6 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <release>17</release>
-                </configuration>
                 <executions>
                     <execution>
                         <id>default-compile</id>
