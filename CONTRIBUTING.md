@@ -73,11 +73,24 @@ is followed for every pull request.
 * Please limit the use of lambdas and streams as much as possible in code that executes at runtime, in order to minimize runtime footprint.
 * Code is easy to follow and doesn’t contain commented-out code 
 * No obvious duplication or dead code
+* Don't break public API methods in a refactor. Deprecate them and keep the old ones working instead, even if we don't
+  have confirmed external users for that particular method yet - we'd rather be conservative here.
+* Give parameters and test names an actual meaning: no one-letter parameter names, and test method names should describe
+  the functional scenario (or match the class under test) rather than just restating the method being tested, e.g.
+  `testSchedulerAnnotationsAreDiscovered` instead of `testGet`.
+* When we depend on an external library (ShedLock, for example), don't duplicate its documentation in our own README -
+  link to the official docs instead. That way our documentation only changes when we actually change something.
+* Don't reinvent something the underlying framework already provides, and don't duplicate logic between the Quarkus and
+  Spring Boot extension modules - if both need it, it belongs in a shared place.
+* Builder methods shouldn't silently depend on each other's call order (e.g. a `withEnd()` that assumes `withStart()`
+  was called first). If two builder calls are really one concept, combine them into a single method instead.
 
 ### Logging Guidelines
-* All log entries must be made using the SLF4J logger.
+* All log entries must be made using the SLF4J logger - including in tests, never `System.out`/`println`.
 * Never log sensitive data, including personally identifiable information (PII) protected under GDPR, passwords,
   authentication tokens, or any other confidential information.
+* When behavior depends on which implementation or strategy is active, log that choice so it's visible to whoever's
+  running the scheduler, instead of something they have to infer from configuration.
 Be mindful of the performance cost of logging:
 * Don't over-log: Avoid logging in tight loops or in situations that would produce excessive output.
 * Log errors only once and avoid redundant logging.
