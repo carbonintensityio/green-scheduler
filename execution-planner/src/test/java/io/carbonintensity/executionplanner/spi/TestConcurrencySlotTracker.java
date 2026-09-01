@@ -44,6 +44,25 @@ class TestConcurrencySlotTracker {
     }
 
     @Test
+    void twoZonesCanIndependentlyReserveTheExactSameInstant() {
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+
+        // Two jobs in different zones both want the exact same instant. Neither should see the
+        // other's reservation: coordination is per zone, never global.
+        tracker.reserve(ZONE_A, "job-a1", SLOT);
+        tracker.reserve(ZONE_B, "job-b1", SLOT);
+
+        // Each was the first (and only) reservation in its own zone, so each sees zero competitors
+        // at that instant - i.e. neither would be bumped to a later slot.
+        assertThat(tracker.countOthersAt(ZONE_A, "job-a1", SLOT)).isZero();
+        assertThat(tracker.countOthersAt(ZONE_B, "job-b1", SLOT)).isZero();
+
+        // A second job arriving in either zone only competes with reservations in that same zone.
+        assertThat(tracker.countOthersAt(ZONE_A, "job-a2", SLOT)).isEqualTo(1);
+        assertThat(tracker.countOthersAt(ZONE_B, "job-b2", SLOT)).isEqualTo(1);
+    }
+
+    @Test
     void countOthersAtIsZeroForAnUnreservedSlot() {
         ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
 
