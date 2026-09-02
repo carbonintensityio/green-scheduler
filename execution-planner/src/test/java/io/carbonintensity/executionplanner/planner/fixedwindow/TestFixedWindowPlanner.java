@@ -5,10 +5,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,7 @@ import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
 
+import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensityDataFetcher;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityJsonParser;
 import io.carbonintensity.executionplanner.spi.CarbonIntensityPlanner;
@@ -38,13 +42,18 @@ class TestFixedWindowPlanner {
     }
 
     private static FixedWindowPlanningConstraints constraintsFor(String identity, ZonedDateTime start, ZonedDateTime end) {
+        return constraintsFor(identity, start, end, Duration.ofMinutes(30));
+    }
+
+    private static FixedWindowPlanningConstraints constraintsFor(String identity, ZonedDateTime start, ZonedDateTime end,
+            Duration duration) {
         CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ));
         Cron cron = cronParser.parse(String.format("%d %d %d * * ?", start.getSecond(), start.getMinute(), start.getHour()));
         Cron cronFallback = cronParser.parse("0 0 12 * * ?");
 
         return DefaultFixedWindowPlanningConstraints.builder()
                 .withIdentity(identity)
-                .withDuration(Duration.ofMinutes(30))
+                .withDuration(duration)
                 .withCarbonIntensityZone("NL")
                 .withCronExpression(cron)
                 .withStartAndEnd(start, end)
@@ -102,6 +111,50 @@ class TestFixedWindowPlanner {
         assertThat(timeB).isNotNull();
         // no room to spread within this window: both jobs still run, at the same greenest slot
         assertThat(timeB).isEqualTo(timeA);
+    }
+
+    /**
+     * When several candidate slots tie on carbon intensity, {@code SingleJobStrategy#rankedTimeslots}
+     * breaks the tie by chronological order (see {@code TestSingleJobStrategy}). This pins that the same
+     * deterministic order is what spreading walks through here: competing jobs land on the tied slots in
+     * chronological order, not in some incidental order.
+     */
+    @Test
+    void whenThreeJobsCompeteForTiedSlots_thenTheyAreSpreadInChronologicalOrder() {
+        CarbonIntensityDataFetcher sharedFetcher = mock(CarbonIntensityDataFetcher.class);
+
+        // hourly data: 01:00, 02:00 and 03:00 all tie at 50, so with a 1-hour job duration those three
+        // timeslots are the tied candidates; 00:00 (100) and 04:00 (200) are strictly worse.
+        CarbonIntensity carbonIntensity = new CarbonIntensity();
+        carbonIntensity.setZone("NL");
+        carbonIntensity.setResolution(Duration.ofHours(1));
+        carbonIntensity.setStart(Instant.parse("2024-01-01T00:00:00Z"));
+        carbonIntensity.setEnd(Instant.parse("2024-01-01T05:00:00Z"));
+        carbonIntensity.setData(List.of(
+                new BigDecimal("100"),
+                new BigDecimal("50"),
+                new BigDecimal("50"),
+                new BigDecimal("50"),
+                new BigDecimal("200")));
+        when(sharedFetcher.fetchCarbonIntensity(any())).thenReturn(carbonIntensity);
+
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerA = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerB = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerC = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+
+        ZonedDateTime ws = ZonedDateTime.parse("2024-01-01T00:00:00Z");
+        ZonedDateTime we = ws.plusHours(4);
+        Duration duration = Duration.ofHours(1);
+
+        ZonedDateTime timeA = plannerA.getNextExecutionTime(constraintsFor("job-a", ws, we, duration));
+        ZonedDateTime timeB = plannerB.getNextExecutionTime(constraintsFor("job-b", ws, we, duration));
+        ZonedDateTime timeC = plannerC.getNextExecutionTime(constraintsFor("job-c", ws, we, duration));
+
+        // the three tied (CI 50) slots are claimed in chronological order: 01:00, then 02:00, then 03:00
+        assertThat(timeA).isEqualTo(ws.plusHours(1));
+        assertThat(timeB).isEqualTo(ws.plusHours(2));
+        assertThat(timeC).isEqualTo(ws.plusHours(3));
     }
 
     @Test
