@@ -298,7 +298,9 @@ To include them into your project you need to make sure to reference version `99
 The scheduler uses Jacoco to generate test coverage. Run `mvn install jacoco:report -Ptest-coverage` in the module
 you want a report for (or with `-f ...`); the report is generated in that module's `target/site/jacoco/`.
 
-An aggregated, multi-module coverage report isn't currently available.
+For an aggregated, multi-module report covering `core` and `execution-planner` together, run
+`mvn -pl core,execution-planner,coverage-report -am install -Ptest-coverage` from the repo root; the report is
+generated in `coverage-report/target/site/jacoco-aggregate/`.
 
 ### Check security vulnerabilities
 
