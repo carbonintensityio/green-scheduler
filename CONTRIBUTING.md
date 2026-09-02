@@ -172,10 +172,11 @@ If you have not done so on this machine, you need to:
 
 ### IDE Config and Code Style
 
-The scheduler has a strictly enforced code style. Code formatting is done by the Eclipse code formatter, using the config
-files found in the `support-projects/ide-config` directory. By default, when you run `./mvnw install`, the code will
-be formatted automatically. When submitting a pull request the CI build will fail if running the formatter results in
-any code changes, so it is recommended that you always run a full Maven build before submitting a pull request.
+The scheduler has a strictly enforced code style. Code formatting is done by the Spotless Maven plugin, driving the
+same Eclipse formatter engine and the same config files found in the `support-projects/ide-config` directory. By
+default, when you run `./mvnw install`, the code will be formatted automatically. When submitting a pull request the
+CI build will fail if running the formatter results in any code changes, so it is recommended that you always run a
+full Maven build before submitting a pull request.
 
 If you want to run the formatting without doing a full build, you can run `./mvnw process-sources`.
 
