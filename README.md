@@ -57,6 +57,63 @@ or the following for a Quarkus-based project:
     </dependency>
 ```
 
+or the following for a Micronaut-based project (**experimental**: the newest of the three extensions,
+not yet covered by the compatibility matrix below). Unlike the Spring Boot and Quarkus extensions,
+this one is split into a runtime and a build-time annotation-processor artifact that both need to be
+on the same version - import the [BOM](https://search.maven.org/artifact/io.carbonintensity/green-scheduler-bom)
+rather than pinning each one separately, so a future upgrade can't leave them out of sync:
+
+Maven:
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-bom</artifactId>
+            <version>0.8.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>io.carbonintensity</groupId>
+        <artifactId>green-scheduler-micronaut</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    implementation(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    implementation("io.carbonintensity:green-scheduler-micronaut")
+}
+```
+
+The Micronaut extension processes `@GreenScheduled` at compile time, so
+`green-scheduler-micronaut-processor` must also be added as an annotation processor path, next to
+`micronaut-inject-java`. With the BOM imported above, its version can be omitted the same way
+(requires Maven Compiler Plugin 3.11.0+; Gradle always resolves it from the platform):
+
+Maven:
+```xml
+<path>
+    <groupId>io.carbonintensity</groupId>
+    <artifactId>green-scheduler-micronaut-processor</artifactId>
+</path>
+```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    annotationProcessor(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    annotationProcessor("io.carbonintensity:green-scheduler-micronaut-processor")
+}
+```
+
 In the application.yaml add the following config including the [API key](#requesting-an-api-key):
 
 ```yaml
@@ -154,13 +211,15 @@ The scheduler may start a process multiple times when multiple instances of the 
 (for example, on different nodes). To make sure that the process is only started once, use a solution such as 
 [ShedLock](https://github.com/lukas-krecan/ShedLock). 
 
-ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for both Spring Boot and 
+ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for Spring Boot and 
 Quarkus-based projects. For Spring Boot applications, please note that the deprecated TaskScheduler proxy mode of 
-ShedLock is not supported.
+ShedLock is not supported. ShedLock also offers official support for Micronaut, though this has not yet been
+verified against the (experimental) Micronaut extension of `green-scheduler`.
 
 Refer to the [ShedLock documentation](https://github.com/lukas-krecan/ShedLock/blob/master/README.md) for more information on how to configure and use it with scheduled jobs:
 - Instructions for Spring-based application can be found [here](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#enable-and-configure-scheduled-locking-spring).
 - For Quarkus-based applications, use ShedLock's [CDI integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#cdi-integration).
+- For Micronaut-based applications, use ShedLock's [Micronaut integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#micronaut-integration).
 
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
