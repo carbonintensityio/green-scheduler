@@ -42,11 +42,21 @@ class TestFixedWindowPlanner {
     }
 
     private static FixedWindowPlanningConstraints constraintsFor(String identity, ZonedDateTime start, ZonedDateTime end) {
-        return constraintsFor(identity, start, end, Duration.ofMinutes(30));
+        return constraintsFor(identity, "NL", start, end, Duration.ofMinutes(30));
     }
 
     private static FixedWindowPlanningConstraints constraintsFor(String identity, ZonedDateTime start, ZonedDateTime end,
             Duration duration) {
+        return constraintsFor(identity, "NL", start, end, duration);
+    }
+
+    private static FixedWindowPlanningConstraints constraintsFor(String identity, String zone, ZonedDateTime start,
+            ZonedDateTime end) {
+        return constraintsFor(identity, zone, start, end, Duration.ofMinutes(30));
+    }
+
+    private static FixedWindowPlanningConstraints constraintsFor(String identity, String zone, ZonedDateTime start,
+            ZonedDateTime end, Duration duration) {
         CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ));
         Cron cron = cronParser.parse(String.format("%d %d %d * * ?", start.getSecond(), start.getMinute(), start.getHour()));
         Cron cronFallback = cronParser.parse("0 0 12 * * ?");
@@ -54,7 +64,7 @@ class TestFixedWindowPlanner {
         return DefaultFixedWindowPlanningConstraints.builder()
                 .withIdentity(identity)
                 .withDuration(duration)
-                .withCarbonIntensityZone("NL")
+                .withCarbonIntensityZone(zone)
                 .withCronExpression(cron)
                 .withStartAndEnd(start, end)
                 .withFallbackCronExpression(cronFallback)
@@ -84,6 +94,34 @@ class TestFixedWindowPlanner {
         assertThat(timeA).isNotNull();
         assertThat(timeB).isNotNull();
         assertThat(timeB).isNotEqualTo(timeA);
+    }
+
+    @Test
+    void whenTwoJobsInDifferentZonesCompeteForTheSameSlot_thenNeitherIsSpread() {
+        CarbonIntensityDataFetcher sharedFetcher = mock(CarbonIntensityDataFetcher.class);
+        CarbonIntensityJsonParser parser = new CarbonIntensityJsonParser();
+        var carbonIntensity = parser.parse(ClassLoader.getSystemResourceAsStream("day-ahead-20240824-Z.json"));
+        // Same fixture regardless of zone is fine here: what matters is that both jobs independently
+        // resolve to the same greenest instant, and neither gets bumped because of the other's zone.
+        when(sharedFetcher.fetchCarbonIntensity(any())).thenReturn(carbonIntensity);
+
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerA = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+        CarbonIntensityPlanner<FixedWindowPlanningConstraints> plannerB = new FixedWindowPlanner(sharedFetcher, tracker, 1);
+
+        ZonedDateTime ws = ZonedDateTime.parse("2024-08-27T00:00:00Z");
+        ZonedDateTime we = ws.plusHours(6);
+        var constraintsA = constraintsFor("job-a", "NL", ws, we);
+        var constraintsB = constraintsFor("job-b", "DE", ws, we);
+
+        ZonedDateTime timeA = plannerA.getNextExecutionTime(constraintsA);
+        ZonedDateTime timeB = plannerB.getNextExecutionTime(constraintsB);
+
+        assertThat(timeA).isNotNull();
+        assertThat(timeB).isNotNull();
+        // Different zones never compete for the same slot count: job-b lands on the exact same
+        // instant as job-a instead of being spread to the next-best slot.
+        assertThat(timeB).isEqualTo(timeA);
     }
 
     @Test

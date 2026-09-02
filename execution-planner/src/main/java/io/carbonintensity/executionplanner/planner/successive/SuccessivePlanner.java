@@ -110,8 +110,7 @@ public class SuccessivePlanner implements CarbonIntensityPlanner<SuccessivePlann
         String zone = constraints.getCarbonIntensityZone();
         String identity = constraints.getIdentity();
         for (Timeslot candidate : ranked) {
-            if (slotTracker.countOthersAt(zone, identity, candidate.start().toInstant()) < maxConcurrentPerSlot) {
-                slotTracker.reserve(zone, identity, candidate.start().toInstant());
+            if (slotTracker.tryReserve(zone, identity, candidate.start().toInstant(), maxConcurrentPerSlot)) {
                 return candidate.start();
             }
         }
