@@ -90,7 +90,7 @@ Maven:
 Gradle (Kotlin DSL):
 ```kotlin
 dependencies {
-    implementation(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    implementation(platform("io.carbonintensity:green-scheduler-bom:0.8.6"))
     implementation("io.carbonintensity:green-scheduler-micronaut")
 }
 ```
@@ -111,7 +111,7 @@ Maven:
 Gradle (Kotlin DSL):
 ```kotlin
 dependencies {
-    annotationProcessor(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    annotationProcessor(platform("io.carbonintensity:green-scheduler-bom:0.8.6"))
     annotationProcessor("io.carbonintensity:green-scheduler-micronaut-processor")
 }
 ```
