@@ -17,6 +17,7 @@ public class SchedulerConfigBuilder {
     private boolean enabled;
     private SchedulerConfig.StartMode startMode;
     private Integer jobExecutorCount;
+    private Integer maxConcurrentPerSlot;
     private Duration shutdownGracePeriod;
     private Duration overdueGracePeriod;
     private String apiKey;
@@ -46,6 +47,8 @@ public class SchedulerConfigBuilder {
                 .ifPresent(this::startMode);
         properties.getJobExecutors()
                 .ifPresent(this::jobExecutorCount);
+        properties.getMaxConcurrentPerSlot()
+                .ifPresent(this::maxConcurrentPerSlot);
         properties.getOverdueGracePeriod()
                 .ifPresent(this::overdueGracePeriod);
         properties.getShutdownGracePeriod()
@@ -66,6 +69,13 @@ public class SchedulerConfigBuilder {
         Assert.notNull(jobExecutors, "jobExecutors cannot be null");
         Assert.isTrue(jobExecutors > 0, "jobExecutors must be greater than 0");
         this.jobExecutorCount = jobExecutors;
+        return this;
+    }
+
+    public SchedulerConfigBuilder maxConcurrentPerSlot(Integer maxConcurrentPerSlot) {
+        Assert.notNull(maxConcurrentPerSlot, "maxConcurrentPerSlot cannot be null");
+        Assert.isTrue(maxConcurrentPerSlot >= 0, "maxConcurrentPerSlot must be greater than or equal to 0");
+        this.maxConcurrentPerSlot = maxConcurrentPerSlot;
         return this;
     }
 
@@ -123,6 +133,7 @@ public class SchedulerConfigBuilder {
         schedulerConfig.setOverdueGracePeriod(overdueGracePeriod);
         schedulerConfig.setShutdownGracePeriod(shutdownGracePeriod);
         schedulerConfig.setJobExecutors(jobExecutorCount);
+        schedulerConfig.setMaxConcurrentPerSlot(maxConcurrentPerSlot);
 
         if (this.carbonIntensityApi != null) {
             schedulerConfig.setCarbonIntensityApi(carbonIntensityApi);

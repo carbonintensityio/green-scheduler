@@ -42,6 +42,7 @@ import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensityDataFetch
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiType;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityRestApi;
 import io.carbonintensity.executionplanner.spi.CarbonIntensityPlanner;
+import io.carbonintensity.executionplanner.spi.ConcurrencySlotTracker;
 import io.carbonintensity.executionplanner.spi.PlanningConstraints;
 import io.carbonintensity.scheduler.ConcurrentExecution;
 import io.carbonintensity.scheduler.GreenScheduled;
@@ -114,6 +115,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
     private final ConcurrentMap<String, ScheduledTask> scheduledTasks;
     private final boolean enabled;
     private final SchedulerConfig schedulerConfig;
+    private final ConcurrencySlotTracker slotTracker;
     private final JobInstrumenter jobInstrumenter;
     private final List<EventListener> eventListeners;
     private final Events events;
@@ -127,6 +129,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
         this.schedulerConfig = schedulerConfig;
         this.jobInstrumenter = schedulerConfig.getJobInstrumenter();
         this.eventListeners = new ArrayList<>();
+        this.slotTracker = new ConcurrencySlotTracker();
 
         if (!schedulerConfig.isEnabled()) {
             log.info("Simple scheduler is disabled by config property and will not be started.");
@@ -425,12 +428,14 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
 
         if (constraints instanceof FixedWindowPlanningConstraints) {
             var fixedWindowConstraints = (FixedWindowPlanningConstraints) constraints;
-            CarbonIntensityPlanner<FixedWindowPlanningConstraints> fixedWindowPlanner = new FixedWindowPlanner(dataFetcher);
+            CarbonIntensityPlanner<FixedWindowPlanningConstraints> fixedWindowPlanner = new FixedWindowPlanner(dataFetcher,
+                    slotTracker, schedulerConfig.getMaxConcurrentPerSlot());
             return new FixedWindowTrigger(id, methodDescription, overdueGracePeriod, fixedWindowPlanner,
                     fixedWindowConstraints, clock);
         } else if (constraints instanceof SuccessivePlanningConstraints) {
             var successiveConstraints = (SuccessivePlanningConstraints) constraints;
-            CarbonIntensityPlanner<SuccessivePlanningConstraints> successivePlanner = new SuccessivePlanner(dataFetcher);
+            CarbonIntensityPlanner<SuccessivePlanningConstraints> successivePlanner = new SuccessivePlanner(dataFetcher,
+                    slotTracker, schedulerConfig.getMaxConcurrentPerSlot());
             final var start = ZonedDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
             return new SuccessiveTrigger(id, clock, start, methodDescription, overdueGracePeriod, successivePlanner,
                     successiveConstraints);
