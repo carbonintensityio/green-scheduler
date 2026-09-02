@@ -35,6 +35,8 @@ Java, Quarkus and Spring Boot each move fast enough that "works with the version
 
 A newer, not-yet-LTS Quarkus line is checked too, but as a canary: we want to know early if something's about to break, without blocking on a line nobody's committed to supporting yet. See `compatibility/policy.yaml` for the exact selection rules and `docs/adr/0001-compatibility-testing-strategy.md` for the reasoning behind them.
 
+Micronaut support is new (CIIO-250) and entirely canary for now: every major line Micronaut's own release lifecycle still lists as active (currently 3, 4 and 5) is checked on every scheduled run, but a failure there doesn't block a release yet - nobody has committed to supporting Micronaut in production the way Quarkus and Spring Boot are supported above. It moves to the table above once the team has actually verified a line and made that call, the same path Spring Boot 4.0/4.1 went through.
+
 ## How to build
 The build instructions are available in the [contribution guide](CONTRIBUTING.md).
 

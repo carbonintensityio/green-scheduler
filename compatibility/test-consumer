@@ -5,7 +5,7 @@ set -euo pipefail
 # framework/version combination, and reports PASS or FAIL.
 #
 # Usage:
-#   compatibility/test-consumer --framework <quarkus|spring-boot> --version <framework-version> \
+#   compatibility/test-consumer --framework <quarkus|spring-boot|micronaut> --version <framework-version> \
 #       [--green-scheduler-version <version>] [--java <label, for display only>]
 #
 # Does not install anything itself - the caller is responsible for making sure the
@@ -32,7 +32,7 @@ GS_VERSION="999-SNAPSHOT"
 JAVA_LABEL=""
 
 usage() {
-    echo "Usage: $(basename "$0") --framework <quarkus|spring-boot> --version <framework-version> [--green-scheduler-version <version>] [--java <label>]" >&2
+    echo "Usage: $(basename "$0") --framework <quarkus|spring-boot|micronaut> --version <framework-version> [--green-scheduler-version <version>] [--java <label>]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -75,8 +75,12 @@ spring-boot)
     MODULE="spring-boot-app"
     VERSION_PROPERTY="spring.boot.version"
     ;;
+micronaut)
+    MODULE="micronaut-app"
+    VERSION_PROPERTY="micronaut.version"
+    ;;
 *)
-    echo "test-consumer: unknown framework '$FRAMEWORK' (expected 'quarkus' or 'spring-boot')" >&2
+    echo "test-consumer: unknown framework '$FRAMEWORK' (expected 'quarkus', 'spring-boot' or 'micronaut')" >&2
     exit 1
     ;;
 esac
