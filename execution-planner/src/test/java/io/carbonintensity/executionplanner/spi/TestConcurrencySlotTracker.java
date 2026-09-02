@@ -3,6 +3,15 @@ package io.carbonintensity.executionplanner.spi;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -67,5 +76,41 @@ class TestConcurrencySlotTracker {
         ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
 
         assertThat(tracker.countOthersAt(ZONE_A, "job-1", SLOT)).isZero();
+    }
+
+    @Test
+    void whenManyThreadsRaceForTheSameSlot_thenExactlyTheLimitSucceeds() throws Exception {
+        ConcurrencySlotTracker tracker = new ConcurrencySlotTracker();
+        int threadCount = 20;
+        int maxConcurrentPerSlot = 3;
+
+        // All threads call tryReserve for the same zone/slot at (as close to) the exact same moment,
+        // via a barrier - this is the scenario countOthersAt-then-reserve as two separate calls would
+        // race on: every thread could observe "under the limit" before any of them reserves.
+        CyclicBarrier barrier = new CyclicBarrier(threadCount);
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        try {
+            List<Callable<Boolean>> racers = IntStream.range(0, threadCount)
+                    .<Callable<Boolean>> mapToObj(i -> () -> {
+                        barrier.await();
+                        return tracker.tryReserve(ZONE_A, "job-" + i, SLOT, maxConcurrentPerSlot);
+                    })
+                    .collect(Collectors.toList());
+
+            List<Future<Boolean>> results = executor.invokeAll(racers);
+            long successes = results.stream().map(f -> {
+                try {
+                    return f.get();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }).filter(Boolean::booleanValue).count();
+
+            assertThat(successes).isEqualTo(maxConcurrentPerSlot);
+            assertThat(tracker.countOthersAt(ZONE_A, "some-other-job", SLOT)).isEqualTo(maxConcurrentPerSlot);
+        } finally {
+            executor.shutdown();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        }
     }
 }
