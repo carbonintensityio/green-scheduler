@@ -16,5 +16,6 @@
     <modules>
         <module>spring-boot-starter</module>
         <module>quarkus</module>
+        <module>micronaut</module>
     </modules>
 </project>

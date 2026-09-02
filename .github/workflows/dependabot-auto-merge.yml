@@ -2,10 +2,11 @@ name: Dependabot auto-merge
 
 # Approved, green dependency bumps used to just sit there until someone remembered to click
 # merge - that's how the queue backed up for months. This closes that gap for the routine case,
-# without removing human review for the two dependencies where a version bump has actually broken
-# us before (#199): Quarkus and Spring Boot version bumps still need an explicit approval and a
-# manual merge, same as before. Everything else - other Maven dependencies, plugins, and GitHub
-# Actions bumps - merges itself once it's approved and CI is green.
+# without removing human review for the dependencies where a version bump has actually broken us
+# before (#199): Quarkus, Spring Boot and Micronaut version bumps still need an explicit approval
+# and a manual merge, same as before - a framework bump can break the build in ways a routine
+# library bump can't. Everything else - other Maven dependencies, plugins, and GitHub Actions
+# bumps - merges itself once it's approved and CI is green.
 #
 # This only takes effect once "Allow auto-merge" is turned on in the repository settings
 # (Settings > General > Pull Requests) - that's an admin-only toggle this workflow can't set
@@ -40,7 +41,8 @@ jobs:
           steps.metadata.outputs.update-type != 'version-update:semver-major' &&
           !contains(steps.metadata.outputs.dependency-names, 'quarkus') &&
           !contains(steps.metadata.outputs.dependency-names, 'spring.boot') &&
-          !contains(steps.metadata.outputs.dependency-names, 'spring-boot')
+          !contains(steps.metadata.outputs.dependency-names, 'spring-boot') &&
+          !contains(steps.metadata.outputs.dependency-names, 'micronaut')
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}

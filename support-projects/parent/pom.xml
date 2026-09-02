@@ -34,7 +34,7 @@
         <version.impsort.plugin>1.13.0</version.impsort.plugin>
         <version.install.plugin>3.1.4</version.install.plugin>
         <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
-        <version.jar.plugin>3.5.0</version.jar.plugin>
+        <version.jar.plugin>3.5.1</version.jar.plugin>
         <version.nexus-staging.plugin>1.6.13</version.nexus-staging.plugin>
         <version.release.plugin>3.0.0</version.release.plugin>
         <version.resources.plugin>3.5.0</version.resources.plugin>
@@ -44,7 +44,7 @@
         <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
         <version.versions.plugin>2.15.0</version.versions.plugin>
         <version.yaml-properties.plugin>1.1.3</version.yaml-properties.plugin>
-        <version.flatten.plugin>1.7.3</version.flatten.plugin>
+        <version.flatten.plugin>1.8.0</version.flatten.plugin>
 
         <!-- Code format -->
         <format.skip>false</format.skip>

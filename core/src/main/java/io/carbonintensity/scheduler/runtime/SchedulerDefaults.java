@@ -16,6 +16,10 @@ public final class SchedulerDefaults {
     public static final Duration DEFAULT_DURATION = Duration.ofSeconds(1);
     public static final String DEFAULT_API_URL = "https://api.carbonintensity.io";
     public static final int DEFAULT_NUMBER_OF_JOB_EXECUTORS = 10;
+    /**
+     * Disabled by default: jobs schedule independently and may land on the exact same slot.
+     */
+    public static final int DEFAULT_MAX_CONCURRENT_PER_SLOT = 0;
 
     private SchedulerDefaults() {
     }

@@ -15,6 +15,7 @@ public class SchedulerConfigBuilder {
     public static final Duration DEFAULT_OVERDUE_GRACE_PERIOD = SchedulerDefaults.DEFAULT_OVERDUE_GRACE_PERIOD;
     public static final Duration DEFAULT_SHUTDOWN_GRACE_PERIOD = SchedulerDefaults.DEFAULT_SHUTDOWN_GRACE_PERIOD;
     public static final int DEFAULT_NUMBER_OF_JOB_EXECUTORS = SchedulerDefaults.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
+    public static final int DEFAULT_MAX_CONCURRENT_PER_SLOT = SchedulerDefaults.DEFAULT_MAX_CONCURRENT_PER_SLOT;
     public static final SchedulerConfig.StartMode DEFAULT_START_MODE = SchedulerConfig.StartMode.NORMAL;
     public static final String DEFAULT_API_URL = SchedulerDefaults.DEFAULT_API_URL;
     public static final Boolean DEFAULT_ENABLED = true;
@@ -22,6 +23,7 @@ public class SchedulerConfigBuilder {
     private boolean enabled;
     private SchedulerConfig.StartMode startMode;
     private Integer jobExecutorCount;
+    private Integer maxConcurrentPerSlot;
     private Duration shutdownGracePeriod;
     private Duration overdueGracePeriod;
     private String apiKey;
@@ -41,6 +43,7 @@ public class SchedulerConfigBuilder {
         enabled(properties.enabled().orElse(DEFAULT_ENABLED));
         startMode(properties.startMode().orElse(DEFAULT_START_MODE));
         jobExecutorCount(properties.jobExecutors().orElse(DEFAULT_NUMBER_OF_JOB_EXECUTORS));
+        maxConcurrentPerSlot(properties.maxConcurrentPerSlot().orElse(DEFAULT_MAX_CONCURRENT_PER_SLOT));
         overdueGracePeriod(properties.overdueGracePeriod().orElse(DEFAULT_OVERDUE_GRACE_PERIOD));
         shutdownGracePeriod(properties.shutdownGracePeriod().orElse(DEFAULT_SHUTDOWN_GRACE_PERIOD));
         apiUrl(properties.apiUrl().orElse(DEFAULT_API_URL));
@@ -57,6 +60,13 @@ public class SchedulerConfigBuilder {
         Assert.notNull(jobExecutors, "jobExecutors cannot be null");
         Assert.isTrue(jobExecutors > 0, "jobExecutors must be greater than 0");
         this.jobExecutorCount = jobExecutors;
+        return this;
+    }
+
+    public SchedulerConfigBuilder maxConcurrentPerSlot(Integer maxConcurrentPerSlot) {
+        Assert.notNull(maxConcurrentPerSlot, "maxConcurrentPerSlot cannot be null");
+        Assert.isTrue(maxConcurrentPerSlot >= 0, "maxConcurrentPerSlot must be greater than or equal to 0");
+        this.maxConcurrentPerSlot = maxConcurrentPerSlot;
         return this;
     }
 
@@ -114,6 +124,7 @@ public class SchedulerConfigBuilder {
         schedulerConfig.setOverdueGracePeriod(overdueGracePeriod);
         schedulerConfig.setShutdownGracePeriod(shutdownGracePeriod);
         schedulerConfig.setJobExecutors(jobExecutorCount);
+        schedulerConfig.setMaxConcurrentPerSlot(maxConcurrentPerSlot);
 
         if (this.carbonIntensityApi != null) {
             schedulerConfig.setCarbonIntensityApi(carbonIntensityApi);
