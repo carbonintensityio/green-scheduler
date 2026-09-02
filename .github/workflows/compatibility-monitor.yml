@@ -191,7 +191,13 @@ jobs:
         with:
           pattern: 'result-*'
           path: results
-          merge-multiple: true
+          # Deliberately NOT merge-multiple: every per-combination artifact uploads the exact same
+          # inner path ("results/result.json" - see "Upload result" above), only the artifact name
+          # itself is unique. merge-multiple extracts every matching artifact into one shared
+          # directory, so same-named files silently overwrite each other and only the
+          # last-downloaded combination's result survives - see green-scheduler#263. Without it,
+          # download-artifact gives each artifact its own subdirectory (named after the artifact)
+          # under `path`, so nothing collides.
 
       - name: Aggregate per key and report
         env:
@@ -200,7 +206,8 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(results/*.json)
+          # One subdirectory per artifact (see "Download results" above), so recurse one level.
+          files=(results/*/*.json)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No compatibility results were uploaded - nothing to report." >&2
             exit 1
