@@ -156,6 +156,62 @@ framework.
 Don't forget to include tests in your pull requests. Also don't forget the documentation (reference documentation,
 javadoc...).
 
+### Testing conventions
+
+**Unit test or `@QuarkusTest`/`@QuarkusUnitTest`?** Ask whether the code under test can be exercised without a CDI
+or Quarkus bootstrap. If it's a plain class you can `new` up yourself - a parser, a calculator, a mapper, anything
+in `core`'s or `execution-planner`'s `runtime.impl`/`planner` packages that doesn't need injection - write a plain
+JUnit 5 unit test (see `TestFixedWindowExpressionParser` or `TestCarbonIntensityJsonParser` for examples). Reach for
+`@QuarkusTest`/`@QuarkusUnitTest` (see `extensions/quarkus/deployment`'s `*Test.java` classes, e.g.
+`CustomCarbonIntensityApiTest`) only when the thing you're testing genuinely needs a CDI container, Quarkus
+augmentation, or build-time extension processing to exist at all - e.g. verifying `SchedulerProcessor`'s generated
+build items, or a scheduled method actually getting invoked through the full extension pipeline.
+
+Don't refactor an existing CDI-managed class just to make it unit-testable. If a class already depends on CDI
+injection or Quarkus lifecycle callbacks for good reason, testing it via `@QuarkusTest`/`@QuarkusUnitTest` (or not
+unit-testing it directly at all, relying on a higher-level integration-style test instead, the way
+`TestFixedWindowScheduler` exercises the scheduler end-to-end) is preferable to restructuring production code
+around test convenience.
+
+**Naming: `*Test.java` (Surefire) vs. `*IT.java` (Failsafe).** Surefire's default include pattern
+(`**/Test*.java`, `**/*Test.java`, `**/*Tests.java`, `**/*TestCase.java`) picks up regular unit and `@QuarkusTest`
+classes during `mvn test`; Failsafe's default pattern (`**/IT*.java`, `**/*IT.java`, `**/*ITCase.java`) is meant for
+slower integration tests that only run during `mvn verify`, after the `integration-test` phase. For example,
+`TestFixedWindowExpressionParser.java` (a fast unit test) runs on every `mvn test`, while a slower test that spins
+up real infrastructure would be named e.g. `SchedulerEndToEndIT.java` to only run during `verify`.
+
+> **Caveat specific to this repo:** `maven-failsafe-plugin` is currently only declared in
+> `support-projects/parent/pom.xml`'s `pluginManagement` - no module actually binds it to the `integration-test`/
+> `verify` phases. In practice this means a `*IT.java` file today would be silently skipped by both Surefire (wrong
+> name pattern) and Failsafe (not bound anywhere) - it would never run at all, which is worse than not having the
+> test. Until Failsafe is actually wired up in a module, don't rely on the `*IT.java` naming to get a test executed;
+> keep it as a regular `*Test.java` (or ask whether it belongs in `integration-tests/` instead, which is presumably
+> where such wiring would go).
+
+**`quarkus.test.include-pattern` / `quarkus:dev` continuous testing:** not applicable here. This repo is a Quarkus
+*extension* (`extensions/quarkus`), not a Quarkus *application* - `quarkus:dev` continuous testing is a feature of
+running a Quarkus app in dev mode, and none of this repo's own modules run that way (the only module that binds the
+`quarkus-maven-plugin` to real goals is `compatibility-tests/quarkus-app`, a deliberately standalone consumer
+simulation outside the main reactor - see its pom for why). If that changes, revisit this.
+
+**Quick "high-risk" checklist** - lean towards writing a test (example-based, and consider a property-based one
+too, see the ADR at `docs/adr/0002-vavr-test-over-jqwik.md`) for code that:
+
+- Computes or compares dates/times, especially anything that constructs a `ZonedDateTime` from a `LocalDate` +
+  `LocalTime` + `ZoneId` (DST gaps/overlaps are an easy way to get this subtly wrong - see
+  `TestFixedWindowExpressionParserProperties` for a worked, cautionary example).
+- Picks a "best" or "next" slot among several candidates (tie-breaking, ordering, off-by-one boundaries).
+- Parses anything that came from outside the JVM: JSON/REST responses, config files, cron expressions, or
+  annotation-attribute expressions like the `fixedWindow` string.
+- Runs on every scheduled invocation, where a bug would be silent until it fires (or fails to) at the wrong time.
+
+...and is comparatively less critical for:
+
+- Builders, DTOs, simple getters/setters, `toString()`/`equals()` boilerplate.
+- Wiring/plumbing code whose correctness is really "does it call the thing it's supposed to call" - a quick mock
+  interaction check usually suffices.
+- Configuration classes with no branching logic of their own.
+
 ## Setup
 
 If you have not done so on this machine, you need to:
