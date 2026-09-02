@@ -12,6 +12,7 @@ fixes, documentation, examples... But first, read this page (including the small
     * [Logging Guidelines](#logging-guidelines)
     * [Continuous Integration](#continuous-integration)
     * [Tests and documentation are not optional](#tests-and-documentation-are-not-optional)
+    * [Testing conventions](#testing-conventions)
 - [Setup](#setup)
     * [IDE Config and Code Style](#ide-config-and-code-style)
         + [Eclipse Setup](#eclipse-setup)
