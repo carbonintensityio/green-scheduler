@@ -232,9 +232,9 @@ just gets fixed on your machine without telling you.
 
 When contributing to the scheduler, it is recommended to respect the following rules.
 
-> **Note:** The `impsort-maven-plugin` uses the `.cache` directory on each module to speed up the build.
-> Because we have configured the plugin to store in a versioned directory, you may notice over time that the `.cache` directory grows in size. You can safely delete the `.cache` directory in each module to reclaim the space.
-> Running `./mvnw clean -Dclean-cache` automatically deletes that directory for you.
+> **Note:** Formatting is enforced by the Spotless Maven plugin, which keeps its up-to-date index under each
+> module's `target/spotless-index` to speed up the build. That lives under `target/`, so a regular `./mvnw clean`
+> already removes it - no separate cache directory or flag to manage.
 
 **Contributing to an extension**
 

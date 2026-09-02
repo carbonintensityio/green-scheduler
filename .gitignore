@@ -40,5 +40,4 @@ nb-configuration.xml
 .env
 
 # Plugin directory
-.cache/
 .history
