@@ -46,7 +46,7 @@ Add the following dependency to the pom for a Spring Boot based project:
 <dependency>
     <groupId>io.carbonintensity</groupId>
     <artifactId>green-scheduler-spring-boot-starter</artifactId>
-    <version>0.8.5</version>
+    <version>0.8.6</version>
 </dependency>
 ```
 
@@ -55,7 +55,7 @@ or the following for a Quarkus-based project:
    <dependency>
       <groupId>io.carbonintensity</groupId>
       <artifactId>quarkus-green-scheduler</artifactId>
-      <version>0.8.5</version>
+      <version>0.8.6</version>
     </dependency>
 ```
 
@@ -72,7 +72,7 @@ Maven:
         <dependency>
             <groupId>io.carbonintensity</groupId>
             <artifactId>green-scheduler-bom</artifactId>
-            <version>0.8.3</version>
+            <version>0.8.6</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
