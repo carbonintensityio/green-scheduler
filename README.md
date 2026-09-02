@@ -35,6 +35,8 @@ Java, Quarkus and Spring Boot each move fast enough that "works with the version
 
 A newer, not-yet-LTS Quarkus line is checked too, but as a canary: we want to know early if something's about to break, without blocking on a line nobody's committed to supporting yet. See `compatibility/policy.yaml` for the exact selection rules and `docs/adr/0001-compatibility-testing-strategy.md` for the reasoning behind them.
 
+Micronaut support is new (CIIO-250) and entirely canary for now: every major line Micronaut's own release lifecycle still lists as active (currently 3, 4 and 5) is checked on every scheduled run, but a failure there doesn't block a release yet - nobody has committed to supporting Micronaut in production the way Quarkus and Spring Boot are supported above. It moves to the table above once the team has actually verified a line and made that call, the same path Spring Boot 4.0/4.1 went through.
+
 ## How to build
 The build instructions are available in the [contribution guide](CONTRIBUTING.md).
 
@@ -55,6 +57,63 @@ or the following for a Quarkus-based project:
       <artifactId>quarkus-green-scheduler</artifactId>
       <version>0.8.5</version>
     </dependency>
+```
+
+or the following for a Micronaut-based project (**experimental**: the newest of the three extensions,
+not yet covered by the compatibility matrix below). Unlike the Spring Boot and Quarkus extensions,
+this one is split into a runtime and a build-time annotation-processor artifact that both need to be
+on the same version - import the [BOM](https://search.maven.org/artifact/io.carbonintensity/green-scheduler-bom)
+rather than pinning each one separately, so a future upgrade can't leave them out of sync:
+
+Maven:
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-bom</artifactId>
+            <version>0.8.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>io.carbonintensity</groupId>
+        <artifactId>green-scheduler-micronaut</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    implementation(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    implementation("io.carbonintensity:green-scheduler-micronaut")
+}
+```
+
+The Micronaut extension processes `@GreenScheduled` at compile time, so
+`green-scheduler-micronaut-processor` must also be added as an annotation processor path, next to
+`micronaut-inject-java`. With the BOM imported above, its version can be omitted the same way
+(requires Maven Compiler Plugin 3.11.0+; Gradle always resolves it from the platform):
+
+Maven:
+```xml
+<path>
+    <groupId>io.carbonintensity</groupId>
+    <artifactId>green-scheduler-micronaut-processor</artifactId>
+</path>
+```
+
+Gradle (Kotlin DSL):
+```kotlin
+dependencies {
+    annotationProcessor(platform("io.carbonintensity:green-scheduler-bom:0.8.3"))
+    annotationProcessor("io.carbonintensity:green-scheduler-micronaut-processor")
+}
 ```
 
 In the application.yaml add the following config including the [API key](#requesting-an-api-key):
@@ -154,13 +213,36 @@ The scheduler may start a process multiple times when multiple instances of the 
 (for example, on different nodes). To make sure that the process is only started once, use a solution such as 
 [ShedLock](https://github.com/lukas-krecan/ShedLock). 
 
-ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for both Spring Boot and 
+ShedLock is supported by and tested with `green-scheduler` release v0.8.3 and later, for Spring Boot and 
 Quarkus-based projects. For Spring Boot applications, please note that the deprecated TaskScheduler proxy mode of 
-ShedLock is not supported.
+ShedLock is not supported. ShedLock also offers official support for Micronaut, though this has not yet been
+verified against the (experimental) Micronaut extension of `green-scheduler`.
 
 Refer to the [ShedLock documentation](https://github.com/lukas-krecan/ShedLock/blob/master/README.md) for more information on how to configure and use it with scheduled jobs:
 - Instructions for Spring-based application can be found [here](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#enable-and-configure-scheduled-locking-spring).
 - For Quarkus-based applications, use ShedLock's [CDI integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#cdi-integration).
+- For Micronaut-based applications, use ShedLock's [Micronaut integration](https://github.com/lukas-krecan/ShedLock?tab=readme-ov-file#micronaut-integration).
+
+### Scheduling multiple jobs
+Each `@GreenScheduled` job (`Fixed` or `Successive`) is planned independently, based only on its own window,
+duration and `carbonIntensityZone`. By default, if several jobs within the same application instance target
+the same zone and their optimal windows overlap, they may all be scheduled at the exact same, greenest moment
+- there is no coordination between them out of the box.
+
+Set `green-scheduler.max-concurrent-per-slot` to a positive number to limit how many jobs are allowed to start
+at the exact same slot within the same zone. Jobs beyond that limit are automatically spread to the next-best
+slot instead (taking each job's `duration` into account), and so on for further jobs, until a slot is found
+that satisfies the limit.
+
+This is disabled by default (`0`): existing applications are unaffected unless this property is explicitly
+set, since changing when jobs fire is a deliberate scheduling decision, not something that should change
+silently on upgrade.
+
+A job's own configured window always takes priority over this limit: if every slot within the window is
+already at the limit, the job still runs at its greenest available slot in that window rather than not
+running at all (a warning is logged when this happens). This only coordinates jobs known to this application
+instance - it does not coordinate across multiple instances/replicas of the same application; combine it with
+[ShedLock](#concurrent-executions) if you also run multiple instances.
 
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from

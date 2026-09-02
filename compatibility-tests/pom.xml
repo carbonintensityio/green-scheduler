@@ -28,5 +28,6 @@
     <modules>
         <module>quarkus-app</module>
         <module>spring-boot-app</module>
+        <module>micronaut-app</module>
     </modules>
 </project>

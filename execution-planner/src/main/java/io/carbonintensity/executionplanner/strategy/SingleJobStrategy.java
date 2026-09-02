@@ -4,6 +4,8 @@ import static io.carbonintensity.executionplanner.planner.Timeslot.getTimeslots;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -35,25 +37,26 @@ public class SingleJobStrategy implements PlanningStrategy {
 
     @Override
     public Timeslot bestTimeslot(ZonedDateTime ws, ZonedDateTime we, Duration duration, CarbonIntensity carbonIntensity) {
-
-        // create timeslots and calculate carbon intensity
-        List<Timeslot> timeslots = getTimeslots(ws, we, duration, resolution, carbonIntensity);
-
-        if (timeslots.isEmpty()) {
+        List<Timeslot> ranked = rankedTimeslots(ws, we, duration, carbonIntensity);
+        if (ranked.isEmpty()) {
             log.warn("No timeslots found!  {}", carbonIntensity.getData().size());
             return null;
         }
 
-        Timeslot best = null;
-        for (Timeslot t : timeslots) {
-            if (best == null || t.carbonIntensity().compareTo(best.carbonIntensity()) < 0) {
-                best = t;
-            }
-        }
-
+        Timeslot best = ranked.get(0);
         log.debug("Found best timeslot of {} job between {} - {} at {} (CI: {})", duration, ws, we, best.start(),
                 best.carbonIntensity());
         return best;
+    }
+
+    @Override
+    public List<Timeslot> rankedTimeslots(ZonedDateTime ws, ZonedDateTime we, Duration duration,
+            CarbonIntensity carbonIntensity) {
+        // create timeslots and calculate carbon intensity
+        List<Timeslot> timeslots = new ArrayList<>(getTimeslots(ws, we, duration, resolution, carbonIntensity));
+        // stable sort: on equal carbon intensity, the chronologically first slot stays first
+        timeslots.sort(Comparator.comparing(Timeslot::carbonIntensity));
+        return timeslots;
     }
 
 }

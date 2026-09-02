@@ -1,6 +1,7 @@
 package io.carbonintensity.scheduler.spring.factory;
 
 import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_API_URL;
+import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_MAX_CONCURRENT_PER_SLOT;
 import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
 import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_OVERDUE_GRACE_PERIOD;
 import static io.carbonintensity.scheduler.spring.GreenSchedulerProperties.DEFAULT_SHUTDOWN_GRACE_PERIOD;
@@ -37,6 +38,7 @@ class SchedulerConfigBuilderTests {
 
         assertThat(schedulerConfig.isEnabled()).isTrue();
         assertThat(schedulerConfig.getJobExecutors()).isEqualTo(DEFAULT_NUMBER_OF_JOB_EXECUTORS);
+        assertThat(schedulerConfig.getMaxConcurrentPerSlot()).isEqualTo(DEFAULT_MAX_CONCURRENT_PER_SLOT);
         assertThat(schedulerConfig.getStartMode()).isEqualTo(DEFAULT_START_MODE);
         assertThat(schedulerConfig.getOverdueGracePeriod()).isEqualTo(DEFAULT_OVERDUE_GRACE_PERIOD);
         assertThat(schedulerConfig.getShutdownGracePeriod()).isEqualTo(DEFAULT_SHUTDOWN_GRACE_PERIOD);
@@ -90,6 +92,30 @@ class SchedulerConfigBuilderTests {
     @ValueSource(ints = { 0, -1 })
     void whenSettingInvalidJobExecutorCount_thenThrowException(Integer jobExecutors) {
         assertThrows(IllegalArgumentException.class, () -> builder.jobExecutorCount(jobExecutors));
+    }
+
+    @Test
+    void testMaxConcurrentPerSlot() {
+        var schedulerConfig = builder
+                .maxConcurrentPerSlot(2)
+                .build();
+
+        assertThat(schedulerConfig.getMaxConcurrentPerSlot()).isEqualTo(2);
+        assertThrows(IllegalArgumentException.class, () -> builder.maxConcurrentPerSlot(null));
+    }
+
+    @Test
+    void whenSettingZeroMaxConcurrentPerSlot_thenDisablesSpreading() {
+        var schedulerConfig = builder
+                .maxConcurrentPerSlot(0)
+                .build();
+
+        assertThat(schedulerConfig.getMaxConcurrentPerSlot()).isZero();
+    }
+
+    @Test
+    void whenSettingNegativeMaxConcurrentPerSlot_thenThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> builder.maxConcurrentPerSlot(-1));
     }
 
     @Test

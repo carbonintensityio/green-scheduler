@@ -165,6 +165,18 @@ one of those adapters yet - that's a separate decision the team hasn't made, not
 "Maintaining this" below for what bringing it in would actually involve, since some of the
 groundwork has already been thought through.
 
+**Update (CIIO-250):** Micronaut has since been added, entirely in the canary tier - see
+`compatibility/policy.yaml`'s `frameworks.micronaut` block and the `resolve_micronaut`-style
+adapter functions in `compatibility/resolve-matrix`. The two things this section already flagged
+turned out to matter, but not quite as first assumed: the adapter uses "every major not yet EOL"
+per endoflife.date's own `eol` field, not a fixed "current plus previous major" count - the first
+version of this adapter hardcoded that count and it silently dropped Micronaut 3, which
+endoflife.date still lists as non-EOL and which kept receiving patch releases (3.10.10, July 2026)
+more than three years after 4.0 shipped. The adapter also resolves its own Java version per entry
+(majors 3 and 4 on 17, major 5 on 25) rather than crossing against the shared `java-versions` axis.
+Promoting a line to required still needs the same explicit, verified decision described under
+"Maintaining this" below.
+
 ## Maintaining this
 
 Changing tier assignments, promoting a freshly released major to required, or adding a third

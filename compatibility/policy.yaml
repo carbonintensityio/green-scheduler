@@ -38,9 +38,26 @@ frameworks:
       required: active-current-major-lines-plus-terminal-previous-major
       canary: none
 
-  # micronaut: deliberately not configured. See the "Maintaining this" section in
-  # docs/adr/0001-compatibility-testing-strategy.md for what adding it involves - a separate
-  # decision already tracks bringing it in.
+  micronaut:
+    adapter: micronaut
+    sources:
+      # Micronaut has no LTS lines and no minor-line-based support policy the way Quarkus does;
+      # support is major-version-based (see docs/adr/0001-compatibility-testing-strategy.md). The
+      # lifecycle feed tells us which majors are current; the actual patch to test is resolved from
+      # Maven Central, same division of labour as the spring-boot adapter above.
+      lifecycle: https://endoflife.date/api/micronaut.json
+      artifact-versions: https://repo1.maven.org/maven2/io/micronaut/micronaut-core/maven-metadata.xml
+    selection:
+      # Experimental at launch (CIIO-250): nothing blocks a release yet. A line only moves to
+      # required after the team has actually verified it and made that call - the same path Spring
+      # Boot 4.0/4.1 went through, see "Maintaining this" below.
+      required: none
+      # Every major whose lifecycle entry isn't EOL yet - "active-lts-lines" doesn't translate
+      # here (Micronaut majors aren't labelled LTS), but "not EOL" does, the same underlying idea.
+      # This is not "current plus previous major": endoflife.date's own data shows Micronaut
+      # currently keeps three majors non-EOL at once (3, 4 and 5, as of 2026-08), each still
+      # receiving patch releases - a fixed count of two would silently drop the oldest one.
+      canary: active-non-eol-majors
 
 # Where the ecosystem monitor gets "the actual latest published green-scheduler artifact" from.
 # Never main - that's the whole point of the monitor workflow, see the ADR.
