@@ -22,7 +22,7 @@
         <mockito.junit.jupiter.version>5.23.0</mockito.junit.jupiter.version>
         <parsson.version>1.1.9</parsson.version>
         <slf4j.version>2.0.18</slf4j.version>
-        <vavr-test.version>0.10.6</vavr-test.version>
+        <vavr-test.version>0.10.7</vavr-test.version>
         <jmh.version>1.37</jmh.version>
         <cron-utils.version>9.2.1</cron-utils.version>
     </properties>
