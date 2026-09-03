@@ -38,7 +38,7 @@
         <version.resources.plugin>3.5.0</version.resources.plugin>
         <version.shade.plugin>3.6.2</version.shade.plugin>
         <version.source.plugin>3.4.0</version.source.plugin>
-        <version.spotless.plugin>2.44.5</version.spotless.plugin>
+        <version.spotless.plugin>2.46.1</version.spotless.plugin>
         <version.surefire.plugin>3.5.6</version.surefire.plugin>
         <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
         <version.versions.plugin>2.15.0</version.versions.plugin>
