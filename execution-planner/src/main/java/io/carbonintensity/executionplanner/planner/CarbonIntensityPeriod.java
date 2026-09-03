@@ -70,8 +70,17 @@ public class CarbonIntensityPeriod implements Comparable<CarbonIntensityPeriod> 
                 .compare(this, o);
     }
 
+    /**
+     * Whether {@code point} falls within this period, using a half-open interval
+     * {@code [moment, moment + resolution)}.
+     * <p>
+     * The upper bound is deliberately exclusive: {@link #of(CarbonIntensity)} produces contiguous periods where
+     * {@code period[i].moment() + resolution == period[i + 1].moment()}. If both bounds were inclusive, that shared
+     * boundary instant would be reported as contained by two consecutive periods at once, which would double-count
+     * it wherever {@code contains} is used to select overlapping periods (e.g. {@link Timeslot#calculateCarbonIntensity}).
+     */
     public boolean contains(Instant point) {
-        return point.compareTo(instant) >= 0 && point.compareTo(instant.plus(resolution)) <= 0;
+        return point.compareTo(instant) >= 0 && point.isBefore(instant.plus(resolution));
     }
 
     @Override
