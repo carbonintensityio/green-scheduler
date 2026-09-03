@@ -61,13 +61,15 @@ rediscovered from scratch:
 
 - Micronaut's version lines aren't labelled LTS the way Quarkus's are, and its support policy is
   major-version based rather than per-minor-line - so the `active-lts-lines`-style rule doesn't
-  translate directly; the adapter will need its own selection logic (something closer to "the
-  current major and the previous one," similar to the Spring Boot adapter).
-- Micronaut 5 has a hard floor of Java 25, while Micronaut 4 still runs on Java 17. The fixed
+  translate directly; the adapter needs its own selection logic. **Not** "current major plus the
+  previous one," though - that was the initial guess here, but endoflife.date's own `eol` field is
+  the actual signal (mirroring how every other adapter already decides "still supported"), and it
+  shows Micronaut currently keeps *three* majors non-EOL at once, not two. Select on `eol == false`
+  directly rather than picking a fixed count.
+- Micronaut 5 has a hard floor of Java 25, while Micronaut 3 and 4 run on Java 17. The fixed
   `java-versions: [17, 25]` axis in `policy.yaml` that every other framework crosses against won't
   work here unmodified - the Micronaut adapter needs to pick the Java version per major rather than
-  testing every line against the same two JDKs (a Micronaut 4 entry tested only on 17, a Micronaut
-  5 entry tested only on 25, for example).
+  testing every line against the same two JDKs.
 
 ## Promoting a freshly released major from canary to required
 

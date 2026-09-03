@@ -2,15 +2,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>scheduler-build-parent</artifactId>
+        <artifactId>green-scheduler-build-parent</artifactId>
         <groupId>io.carbonintensity</groupId>
         <version>${revision}</version>
         <relativePath>../build-parent/pom.xml</relativePath>
     </parent>
     <artifactId>scheduler-coverage-report</artifactId>
     <name>Scheduler Test Coverage Report</name>
-    <description>Aggregates and compiles jacoco test coverage report.
-        This does not currently work on Windows.
+    <description>Aggregates the jacoco.exec files of core and execution-planner (built with the
+        test-coverage profile) into a single multi-module HTML/XML report, using jacoco's own
+        report-aggregate goal instead of a hand-rolled shell script.
     </description>
     <packaging>pom</packaging>
 
@@ -19,54 +20,33 @@
         <revision>999-SNAPSHOT</revision>
     </properties>
 
+    <dependencies>
+        <!-- report-aggregate reads each dependency's target/classes and target/jacoco.exec directly
+             from the reactor - no shell script, no manually-maintained module list to go stale. -->
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>green-scheduler-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.carbonintensity</groupId>
+            <artifactId>execution-planner</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-classes-and-source</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <executable>${project.basedir}/prepare.sh</executable>
-                    <workingDirectory>${project.basedir}</workingDirectory>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
                 <executions>
                     <execution>
-                        <id>merge-reports</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>merge</goal>
-                        </goals>
-                        <configuration>
-                            <fileSets>
-                                <fileSet>
-                                    <directory>${project.basedir}/../</directory>
-                                    <includes>
-                                        <include>**/target/jacoco.exec</include>
-                                    </includes>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>report</id>
+                        <id>report-aggregate</id>
                         <phase>prepare-package</phase>
                         <goals>
-                            <goal>report</goal>
+                            <goal>report-aggregate</goal>
                         </goals>
                         <configuration>
                             <title>Scheduler</title>
@@ -75,7 +55,6 @@
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
     </build>
 </project>

@@ -17,6 +17,7 @@ class GreenScheduledPropertiesTests {
 
         assertThat(properties.getEnabled()).hasValue(true);
         assertThat(properties.getJobExecutors()).hasValue(DEFAULT_NUMBER_OF_JOB_EXECUTORS);
+        assertThat(properties.getMaxConcurrentPerSlot()).hasValue(DEFAULT_MAX_CONCURRENT_PER_SLOT);
         assertThat(properties.getOverdueGracePeriod()).hasValue(DEFAULT_OVERDUE_GRACE_PERIOD);
         assertThat(properties.getShutdownGracePeriod()).hasValue(DEFAULT_SHUTDOWN_GRACE_PERIOD);
         assertThat(properties.getApiUrl()).hasValue(DEFAULT_API_URL);
@@ -25,11 +26,12 @@ class GreenScheduledPropertiesTests {
 
     @Test
     void whenOverridingDefaultValues_thenSetOverriddenValues() {
-        GreenSchedulerProperties properties = new GreenSchedulerProperties(true, SchedulerConfig.StartMode.HALTED, 1,
+        GreenSchedulerProperties properties = new GreenSchedulerProperties(true, SchedulerConfig.StartMode.HALTED, 1, 2,
                 Duration.ofSeconds(1), Duration.ofSeconds(2), "apiKey", "apiUrl");
 
         assertThat(properties.getEnabled()).hasValue(true);
         assertThat(properties.getJobExecutors()).hasValue(1);
+        assertThat(properties.getMaxConcurrentPerSlot()).hasValue(2);
         assertThat(properties.getOverdueGracePeriod()).hasValue(Duration.ofSeconds(1));
         assertThat(properties.getShutdownGracePeriod()).hasValue(Duration.ofSeconds(2));
         assertThat(properties.getApiUrl()).hasValue("apiUrl");

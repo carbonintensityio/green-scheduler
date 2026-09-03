@@ -60,6 +60,18 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.carbonintensity</groupId>
+                <artifactId>green-scheduler-micronaut</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.carbonintensity</groupId>
+                <artifactId>green-scheduler-micronaut-processor</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- Other dependencies -->
             <dependency>
                 <groupId>com.github.ben-manes.caffeine</groupId>

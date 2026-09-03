@@ -60,6 +60,14 @@ public class SchedulerConfig {
 
     private int jobExecutors = SchedulerDefaults.DEFAULT_NUMBER_OF_JOB_EXECUTORS;
 
+    /**
+     * Maximum number of jobs allowed to start at the exact same carbon-intensity slot within the same
+     * zone. {@code 0} (the default) disables this: jobs schedule independently and may land on the same
+     * moment. When set to a positive value, jobs beyond this limit for a given zone/slot are spread to
+     * the next-best slot instead, but a job's configured window always takes priority over this limit.
+     */
+    private int maxConcurrentPerSlot = SchedulerDefaults.DEFAULT_MAX_CONCURRENT_PER_SLOT;
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -77,6 +85,17 @@ public class SchedulerConfig {
             throw new IllegalArgumentException("Job executors cannot be less than 1");
         }
         this.jobExecutors = jobExecutors;
+    }
+
+    public int getMaxConcurrentPerSlot() {
+        return maxConcurrentPerSlot;
+    }
+
+    public void setMaxConcurrentPerSlot(int maxConcurrentPerSlot) {
+        if (maxConcurrentPerSlot < 0) {
+            throw new IllegalArgumentException("Max concurrent per slot cannot be less than 0");
+        }
+        this.maxConcurrentPerSlot = maxConcurrentPerSlot;
     }
 
     public Duration getOverdueGracePeriod() {

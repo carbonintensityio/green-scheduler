@@ -389,36 +389,42 @@ public class SchedulerProcessor {
                     tc.body(tb -> {
                         // Gizmo2 requires values used away from their creation site (reused, or used after
                         // other instructions) to be captured into a LocalVar.
+                        // Deliberately using the (MethodDesc, List<? extends Expr>) overloads throughout this
+                        // method, not the fixed-arity (MethodDesc[, Expr[, Expr]]) convenience overloads: those
+                        // convenience overloads don't exist in the Gizmo2 version shipped with Quarkus 3.27 (only
+                        // added later), and calling them here binds at compile time to whatever's on the build
+                        // classpath, producing a NoSuchMethodError against older Quarkus at runtime. See
+                        // green-scheduler#262/#263.
                         Expr invokeResult;
                         if (isStatic) {
                             Expr invocation = method.parameterTypes().isEmpty()
-                                    ? tb.invokeStatic(businessMethod)
-                                    : tb.invokeStatic(businessMethod, execution);
+                                    ? tb.invokeStatic(businessMethod, List.of())
+                                    : tb.invokeStatic(businessMethod, List.of(execution));
                             invokeResult = methodReturnsVoid ? null : tb.localVar("result", invocation);
                         } else {
                             // InjectableBean<Foo> bean = Arc.container().bean("foo1");
                             // InstanceHandle<Foo> handle = Arc.container().instance(bean);
                             // handle.get().ping();
                             LocalVar container = tb.localVar("container",
-                                    tb.invokeStatic(MethodDesc.of(Arc.class, "container", ArcContainer.class)));
+                                    tb.invokeStatic(MethodDesc.of(Arc.class, "container", ArcContainer.class), List.of()));
                             Expr beanHandle = tb.invokeInterface(
                                     MethodDesc.of(ArcContainer.class, "bean", InjectableBean.class, String.class),
-                                    container, Const.of(bean.getIdentifier()));
+                                    container, List.of(Const.of(bean.getIdentifier())));
                             LocalVar instanceHandle = tb.localVar("instanceHandle", tb.invokeInterface(
                                     MethodDesc.of(ArcContainer.class, "instance", InstanceHandle.class, InjectableBean.class),
-                                    container, beanHandle));
+                                    container, List.of(beanHandle)));
                             Expr beanInstance = tb.invokeInterface(
-                                    MethodDesc.of(InstanceHandle.class, "get", Object.class), instanceHandle);
+                                    MethodDesc.of(InstanceHandle.class, "get", Object.class), instanceHandle, List.of());
 
                             Expr invocation = method.parameterTypes().isEmpty()
-                                    ? tb.invokeVirtual(businessMethod, beanInstance)
-                                    : tb.invokeVirtual(businessMethod, beanInstance, execution);
+                                    ? tb.invokeVirtual(businessMethod, beanInstance, List.of())
+                                    : tb.invokeVirtual(businessMethod, beanInstance, List.of(execution));
                             invokeResult = methodReturnsVoid ? null : tb.localVar("result", invocation);
 
                             // handle.destroy() - destroy dependent instance afterwards
                             if (BuiltinScope.DEPENDENT.is(bean.getScope())) {
                                 tb.invokeInterface(MethodDesc.of(InstanceHandle.class, "destroy", void.class),
-                                        instanceHandle);
+                                        instanceHandle, List.of());
                             }
                         }
 
@@ -428,14 +434,14 @@ public class SchedulerProcessor {
                             stage = tb.invokeStatic(
                                     MethodDesc.of(CompletableFuture.class, "completedStage", CompletionStage.class,
                                             Object.class),
-                                    Const.ofNull(Object.class));
+                                    List.of(Const.ofNull(Object.class)));
                         } else if (method.returnType().name().equals(SchedulerDotNames.UNI)) {
                             // Subscribe to the returned Uni
                             ClassDesc uniDesc = Jandex2Gizmo.classDescOf(SchedulerDotNames.UNI);
                             MethodDesc subscribeAsCompletionStage = InterfaceMethodDesc.of(uniDesc,
                                     "subscribeAsCompletionStage",
                                     MethodTypeDesc.of(ClassDesc.of(CompletableFuture.class.getName())));
-                            stage = tb.invokeInterface(subscribeAsCompletionStage, invokeResult);
+                            stage = tb.invokeInterface(subscribeAsCompletionStage, invokeResult, List.of());
                         } else {
                             stage = invokeResult;
                         }
@@ -444,7 +450,7 @@ public class SchedulerProcessor {
                     });
                     tc.catch_(Throwable.class, "t", (cb, exception) -> cb.return_(cb.invokeStatic(
                             MethodDesc.of(CompletableFuture.class, "failedStage", CompletionStage.class, Throwable.class),
-                            exception)));
+                            List.of(exception))));
                 }));
             });
         });

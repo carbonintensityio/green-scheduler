@@ -64,13 +64,17 @@
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <argLine>-XX:+EnableDynamicAgentLoading</argLine>
+                        <!-- @{...} (not ${...}) so this resolves at execution time, after the
+                             test-coverage profile's prepare-agent execution has populated
+                             jacoco.agent.argLine - otherwise the jacoco agent is computed but never
+                             actually passed to the forked test JVM (CIIO-269). -->
+                        <argLine>-XX:+EnableDynamicAgentLoading @{jacoco.agent.argLine}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <configuration>
-                        <argLine>-XX:+EnableDynamicAgentLoading</argLine>
+                        <argLine>-XX:+EnableDynamicAgentLoading @{jacoco.agent.argLine}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -184,9 +188,6 @@
 
         <profile>
             <id>test-coverage</id>
-            <properties>
-                <jacoco.agent.argLine>${jacoco.activated.agent.argLine}</jacoco.agent.argLine>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -203,7 +204,14 @@
                                     <includes>
                                         <include>io.carbonintensity*</include>
                                     </includes>
-                                    <propertyName>jacoco.activated.agent.argLine</propertyName>
+                                    <!-- Write directly into jacoco.agent.argLine (the same property
+                                         surefire/failsafe consume via @{...}) instead of through an
+                                         intermediate ${...} property: chaining two build-time-resolved
+                                         properties like that gets frozen as a literal, unresolved
+                                         "${jacoco.activated.agent.argLine}" string before this execution
+                                         ever runs, since ${} resolves once during POM interpolation
+                                         while prepare-agent hasn't set anything yet at that point. -->
+                                    <propertyName>jacoco.agent.argLine</propertyName>
                                 </configuration>
                             </execution>
                         </executions>
