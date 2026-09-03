@@ -31,5 +31,5 @@ We use `io.vavr:vavr-test` instead.
 
 Full research trail: [wayfinder map CIIO-309](https://first8.atlassian.net/browse/CIIO-309), ticket
 [CIIO-326](https://first8.atlassian.net/browse/CIIO-326). See also the equivalent ADR in
-carbonintensity-api (`docs/adr/0001-vavr-test-over-jqwik.md`), from ticket CIIO-320 in the same
+carbonintensity-api (`docs/adr/0002-vavr-test-over-jqwik.md`), from ticket CIIO-320 in the same
 wayfinder map.

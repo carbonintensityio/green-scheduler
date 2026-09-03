@@ -20,7 +20,7 @@ import io.vavr.test.Property;
  * object (a round-trip property), rather than just the one hand-picked example the example-based test uses.
  *
  * <p>
- * See {@code docs/adr/0001-vavr-test-over-jqwik.md} (in carbonintensity-api) for why vavr-test rather than
+ * See {@code docs/adr/0002-vavr-test-over-jqwik.md} (in carbonintensity-api) for why vavr-test rather than
  * jqwik is used here.
  */
 class TestCarbonIntensityJsonParserProperties {
