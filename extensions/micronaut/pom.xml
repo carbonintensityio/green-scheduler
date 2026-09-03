@@ -18,7 +18,7 @@
     </modules>
 
     <properties>
-        <micronaut.version>4.10.25</micronaut.version>
+        <micronaut.version>4.10.26</micronaut.version>
         <!-- Micronaut 4 requires Java 17 -->
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
