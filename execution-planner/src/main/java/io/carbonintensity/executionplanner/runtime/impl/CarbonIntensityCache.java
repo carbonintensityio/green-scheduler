@@ -49,14 +49,8 @@ public class CarbonIntensityCache {
                 .expireAfter(new Expiry<Key, CarbonIntensity>() {
                     @Override
                     public long expireAfterCreate(Key key, CarbonIntensity value, long currentTime) {
-                        if (value.getData().isEmpty()) {
-                            return emptyValueTTL.toNanos();
-                        }
                         Instant current = Instant.ofEpochSecond(0L, currentTime);
-
-                        // expire endTime of day.
-                        var expirationTime = value.getEnd().plusSeconds(1);
-                        return Duration.between(current, expirationTime).toNanos();
+                        return computeExpireAfterCreateNanos(value, current, emptyValueTTL);
                     }
 
                     @Override
@@ -71,6 +65,26 @@ public class CarbonIntensityCache {
                         return currentDuration;
                     }
                 }).build();
+    }
+
+    /**
+     * Computes the nanosecond TTL that {@code expireAfterCreate} hands to Caffeine, as a standalone pure
+     * function so it can be property-tested directly.
+     * <p>
+     * Clamps to zero instead of returning a negative value: if {@code value.getEnd()} already lies in the
+     * past relative to {@code currentTime} (e.g. a stale entry re-created after being retrieved from a slow
+     * upstream call), {@code Duration.between(...)} is negative, and Caffeine's {@link Expiry} contract
+     * treats a negative return value as undefined behaviour. Zero tells Caffeine to expire the entry
+     * immediately, which is the correct outcome for already-stale data.
+     */
+    static long computeExpireAfterCreateNanos(CarbonIntensity value, Instant currentTime, Duration emptyValueTTL) {
+        if (value.getData().isEmpty()) {
+            return emptyValueTTL.toNanos();
+        }
+
+        // expire endTime of day.
+        var expirationTime = value.getEnd().plusSeconds(1);
+        return Math.max(0L, Duration.between(currentTime, expirationTime).toNanos());
     }
 
     public static class Key {

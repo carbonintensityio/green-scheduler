@@ -135,10 +135,18 @@ public class GreenScheduledAnnotationParser {
         return new CronParser(definition).parse(cron);
     }
 
+    private static final int SECONDS_PER_DAY = 24 * 60 * 60;
+
     private static String calculateFallBackCronExpression(FixedWindowConstraints fixedWindow) {
         String cron;
         int dailyWindowInSeconds = fixedWindow.getEndTime().toLocalTime().toSecondOfDay()
                 - fixedWindow.getStartTime().toLocalTime().toSecondOfDay();
+        if (dailyWindowInSeconds < 0) {
+            // Overnight window (e.g. 23:15 -> 02:15): the end time-of-day is numerically smaller than the start
+            // time-of-day, so wrap the difference back into [0, SECONDS_PER_DAY) to get the window's actual
+            // duration instead of a negative value.
+            dailyWindowInSeconds += SECONDS_PER_DAY;
+        }
         LocalTime averageTime = fixedWindow.getStartTime().toLocalTime().plusSeconds(dailyWindowInSeconds / 2);
         cron = String.format("0 %s %s * * ?", averageTime.getMinute(), averageTime.getHour());
         return cron;
