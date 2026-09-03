@@ -19,7 +19,7 @@
         <!-- Maven plugin versions -->
 
         <!-- These properties are needed in order for them to be resolvable by the generated projects -->
-        <compiler-plugin.version>${version.compiler.plugin}</compiler-plugin.version>
+        <compiler-plugin.version>3.16.0</compiler-plugin.version>
 
         <!--
         Supported Maven versions, interpreted as a version range (Also defined in scheduler-enforcer-rules)
