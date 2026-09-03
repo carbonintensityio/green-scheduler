@@ -29,9 +29,7 @@
         <version.dependency.plugin>3.11.0</version.dependency.plugin>
         <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
         <version.exec.plugin>3.6.3</version.exec.plugin>
-        <version.formatter.plugin>2.29.0</version.formatter.plugin>
         <version.gpg.plugin>3.2.8</version.gpg.plugin>
-        <version.impsort.plugin>1.13.0</version.impsort.plugin>
         <version.install.plugin>3.1.4</version.install.plugin>
         <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
         <version.jar.plugin>3.5.1</version.jar.plugin>
@@ -40,6 +38,7 @@
         <version.resources.plugin>3.5.0</version.resources.plugin>
         <version.shade.plugin>3.6.2</version.shade.plugin>
         <version.source.plugin>3.4.0</version.source.plugin>
+        <version.spotless.plugin>2.44.5</version.spotless.plugin>
         <version.surefire.plugin>3.5.6</version.surefire.plugin>
         <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
         <version.versions.plugin>2.15.0</version.versions.plugin>
@@ -52,7 +51,7 @@
         <!-- Default properties -->
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <maven.compiler.release>17</maven.compiler.release>
-        <!-- kept for formatter-maven-plugin, which reads these directly and falls back to 1.8 if unset -->
+        <!-- kept for tooling that still reads source/target directly instead of release (falls back to 1.8 if unset) -->
         <maven.compiler.source>${maven.compiler.release}</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.release}</maven.compiler.target>
         <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
@@ -358,35 +357,28 @@
                     </executions>
                 </plugin>
                 <plugin>
-                    <groupId>net.revelc.code.formatter</groupId>
-                    <artifactId>formatter-maven-plugin</artifactId>
-                    <version>${version.formatter.plugin}</version>
-                    <dependencies>
-                        <dependency>
-                            <artifactId>scheduler-ide-config</artifactId>
-                            <groupId>io.carbonintensity</groupId>
-                            <version>${project.version}</version>
-                        </dependency>
-                    </dependencies>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${version.spotless.plugin}</version>
                     <configuration>
-                        <!-- store outside of target to speed up formatting when mvn clean is used -->
-                        <cachedir>.cache/formatter-maven-plugin-${version.formatter.plugin}</cachedir>
-                        <configFile>eclipse-format.xml</configFile>
-                        <lineEnding>LF</lineEnding>
+                        <!-- No <ratchetFrom>: Spotless's git-ratchet support cannot locate the repository when
+                             run from a git worktree ("Cannot find git repository in any parent directory"), which
+                             is how this project is normally worked on. See https://github.com/diffplug/spotless/issues/1765
+                             (and #920, #964, #2209 - long-standing, still unresolved upstream). Full-file
+                             formatting is safe here anyway: this migration was verified to produce byte-identical
+                             output to the previous formatter-maven-plugin/impsort-maven-plugin setup across the
+                             whole codebase, so there is no pre-existing drift for a ratchet to protect against. -->
                         <skip>${format.skip}</skip>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>net.revelc.code</groupId>
-                    <artifactId>impsort-maven-plugin</artifactId>
-                    <version>${version.impsort.plugin}</version>
-                    <configuration>
-                        <!-- store outside of target to speed up formatting when mvn clean is used -->
-                        <cachedir>.cache/impsort-maven-plugin-${version.impsort.plugin}</cachedir>
-                        <groups>java.,javax.,jakarta.,org.,com.</groups>
-                        <staticGroups>*</staticGroups>
-                        <skip>${format.skip}</skip>
-                        <removeUnused>true</removeUnused>
+                        <java>
+                            <eclipse>
+                                <file>${maven.multiModuleProjectDirectory}/support-projects/ide-config/src/main/resources/eclipse-format.xml</file>
+                            </eclipse>
+                            <importOrder>
+                                <file>${maven.multiModuleProjectDirectory}/support-projects/ide-config/src/main/resources/eclipse.importorder</file>
+                            </importOrder>
+                            <removeUnusedImports/>
+                            <lineEndings>UNIX</lineEndings>
+                        </java>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -419,40 +411,6 @@
         </pluginManagement>
     </build>
     <profiles>
-        <profile>
-            <id>clean-cache</id>
-            <activation>
-                <property>
-                    <name>clean-cache</name>
-                    <value>!false</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-clean-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>clean-cache-dirs</id>
-                                <phase>pre-clean</phase>
-                                <inherited>true</inherited>
-                                <goals>
-                                    <goal>clean</goal>
-                                </goals>
-                                <configuration>
-                                    <filesets>
-                                        <fileset>
-                                            <directory>.cache</directory>
-                                        </fileset>
-                                    </filesets>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>release</id>
             <build>

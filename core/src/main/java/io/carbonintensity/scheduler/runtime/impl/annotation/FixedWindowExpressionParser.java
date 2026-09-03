@@ -2,12 +2,14 @@ package io.carbonintensity.scheduler.runtime.impl.annotation;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.time.zone.ZoneOffsetTransition;
 import java.util.Optional;
 
 /**
@@ -60,7 +62,26 @@ public class FixedWindowExpressionParser {
         if (nowIsNextDayBeforeEndWindow) {
             localDateForStartTime = localDateForStartTime.minusDays(1);
         }
-        return ZonedDateTime.of(localDateForStartTime, startTime, timeZoneId);
+        return resolveWindowStart(localDateForStartTime, startTime, timeZoneId);
+    }
+
+    /**
+     * Resolves a window's start local date-time to a {@link ZonedDateTime}, guarding against the spring-forward
+     * ("gap") DST case (CIIO-329): if {@code time} falls inside a nonexistent local time range (e.g. 02:29 on a
+     * day where the clock jumps from 02:00 to 03:00), the JDK's default resolver shifts it forward by the full
+     * length of the gap (02:29 -> 03:29). That shift can push the resolved start past an end time that itself
+     * lands just after the gap and is left untouched (e.g. 03:04), inverting the window. A window's start only
+     * needs to begin no earlier than requested, so instead of shifting by the gap length, it is clamped to the
+     * first valid instant at/after the gap - the earliest moment "at or after" the nominal start that actually
+     * exists on the local clock.
+     */
+    private static ZonedDateTime resolveWindowStart(LocalDate date, LocalTime time, ZoneId zoneId) {
+        LocalDateTime localDateTime = LocalDateTime.of(date, time);
+        ZoneOffsetTransition transition = zoneId.getRules().getTransition(localDateTime);
+        if (transition != null && transition.isGap()) {
+            return ZonedDateTime.of(transition.getDateTimeAfter(), zoneId);
+        }
+        return ZonedDateTime.of(localDateTime, zoneId);
     }
 
     public static ZonedDateTime getZonedEndDateTimeForNextExecutionWindow(Clock clock, ZoneId timeZoneId, LocalTime startTime,

@@ -22,6 +22,7 @@
         <mockito.junit.jupiter.version>5.23.0</mockito.junit.jupiter.version>
         <parsson.version>1.1.9</parsson.version>
         <slf4j.version>2.0.18</slf4j.version>
+        <vavr-test.version>0.10.6</vavr-test.version>
         <jmh.version>1.37</jmh.version>
         <cron-utils.version>9.2.1</cron-utils.version>
     </properties>
@@ -119,6 +120,12 @@
                 <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.vavr</groupId>
+                <artifactId>vavr-test</artifactId>
+                <version>${vavr-test.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>com.cronutils</groupId>
