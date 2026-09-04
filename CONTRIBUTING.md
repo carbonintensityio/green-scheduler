@@ -360,6 +360,40 @@ For an aggregated, multi-module report covering `core` and `execution-planner` t
 `mvn -pl core,execution-planner,coverage-report -am install -Ptest-coverage` from the repo root; the report is
 generated in `coverage-report/target/site/jacoco-aggregate/`.
 
+### Mutation testing (does high coverage% actually mean anything?)
+
+Line coverage only proves a line *ran*, not that a test would notice if its logic broke. PIT (mutation testing)
+checks that by deliberately introducing small bugs ("mutants": flipping a `<=` to `<`, deleting a call, replacing
+a return value with `null`) and confirming the test suite actually fails. A class at 95-100% coverage can still
+have a mutation score far below that.
+
+Configured (local/manual only, not part of `mvn verify` or CI) in `core/pom.xml` (scoped to
+`io.carbonintensity.scheduler.runtime.*`) and `execution-planner/pom.xml` (scoped to `...planner.*`/`...strategy.*`).
+Run per module:
+
+```bash
+mvn initialize org.pitest:pitest-maven:mutationCoverage -pl core
+mvn initialize org.pitest:pitest-maven:mutationCoverage -pl execution-planner -am
+```
+
+The HTML report lands in `target/pit-reports/`. There is no enforced minimum score (no gate) - use it to spot-check
+whether a high-coverage class's tests actually assert anything meaningful.
+
+**When a finding shows high coverage but a low mutation score, it's almost always one of these three shapes -
+check which one before writing anything:**
+
+1. **The test never asserts on the return value, only on a side effect.** Common in invoker/wrapper classes
+   tested through a scheduler-level integration test (a `CountDownLatch`, a listener callback) rather than
+   directly: the side effect gets verified, but whatever the method actually *returns* never does. Fix: assert
+   on the returned value itself, in addition to (not instead of) the existing side-effect check.
+2. **The test never places a value exactly on a boundary.** Common in interval/range comparison logic
+   (`<=`/`>=` deciding which branch a value falls into): existing tests use clearly-inside or clearly-outside
+   values, so a boundary comparison can flip without any test noticing. Fix: add a case where a start/end value
+   sits exactly on the boundary being compared.
+3. **It's not a weak assertion, it's just missing coverage.** A large class can have a merely mediocre mutation
+   score without either pattern above - it's simply too big for the existing tests to reach every path. Fix:
+   add tests for the untested paths; there's no shortcut here.
+
 ### Check security vulnerabilities
 
 When adding a new extension or updating the dependencies of an existing one,
