@@ -14,17 +14,19 @@ public final class ScheduledBusinessMethodItem extends MultiBuildItem {
     private final List<AnnotationInstance> schedules;
     private final MethodInfo method;
     private final boolean nonBlocking;
+    private final AnnotationInstance greenObserved;
 
     public ScheduledBusinessMethodItem(BeanInfo bean, MethodInfo method, List<AnnotationInstance> schedules) {
-        this(bean, method, schedules, false);
+        this(bean, method, schedules, false, null);
     }
 
     public ScheduledBusinessMethodItem(BeanInfo bean, MethodInfo method, List<AnnotationInstance> schedules,
-            boolean nonBlocking) {
+            boolean nonBlocking, AnnotationInstance greenObserved) {
         this.bean = bean;
         this.method = method;
         this.schedules = schedules;
         this.nonBlocking = nonBlocking;
+        this.greenObserved = greenObserved;
     }
 
     /**
@@ -44,6 +46,14 @@ public final class ScheduledBusinessMethodItem extends MultiBuildItem {
 
     public boolean isNonBlocking() {
         return nonBlocking;
+    }
+
+    /**
+     * @return the {@link io.carbonintensity.scheduler.observability.GreenObserved} annotation present on this
+     *         method, or {@code null} if absent
+     */
+    public AnnotationInstance getGreenObserved() {
+        return greenObserved;
     }
 
     public String getMethodDescription() {

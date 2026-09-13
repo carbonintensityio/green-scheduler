@@ -35,6 +35,7 @@ import com.cronutils.parser.CronParser;
 
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.ScheduledExecution;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 import io.carbonintensity.scheduler.quarkus.common.runtime.DefaultInvoker;
 import io.carbonintensity.scheduler.quarkus.common.runtime.MutableScheduledMethod;
 import io.carbonintensity.scheduler.quarkus.common.runtime.SchedulerContext;
@@ -152,7 +153,9 @@ public class SchedulerProcessor {
                         method.name(), declaringClass.name()));
             }
             if (Modifier.isStatic(method.flags())) {
-                scheduledBusinessMethods.produce(new ScheduledBusinessMethodItem(null, method, schedules));
+                AnnotationInstance greenObserved = method.annotation(SchedulerDotNames.GREEN_OBSERVED_NAME);
+                scheduledBusinessMethods
+                        .produce(new ScheduledBusinessMethodItem(null, method, schedules, false, greenObserved));
                 LOGGER.debugf("Found scheduled static method %s declared on %s", method, declaringClass.name());
             }
         }
@@ -192,8 +195,10 @@ public class SchedulerProcessor {
             }
             if (schedules != null) {
                 boolean nonBlocking = transformedAnnotations.hasAnnotation(method, SchedulerDotNames.NON_BLOCKING);
+                AnnotationInstance greenObserved = transformedAnnotations.getAnnotation(method,
+                        SchedulerDotNames.GREEN_OBSERVED_NAME);
                 scheduledBusinessMethods
-                        .produce(new ScheduledBusinessMethodItem(bean, method, schedules, nonBlocking));
+                        .produce(new ScheduledBusinessMethodItem(bean, method, schedules, nonBlocking, greenObserved));
                 LOGGER.debugf("Found scheduled business method %s declared on %s", method, bean);
             }
         }
@@ -306,6 +311,10 @@ public class SchedulerProcessor {
             metadata.setSchedules(schedules);
             metadata.setDeclaringClassName(scheduledMethod.getMethod().declaringClass().toString());
             metadata.setMethodName(scheduledMethod.getMethod().name());
+            if (scheduledMethod.getGreenObserved() != null) {
+                metadata.setGreenObservedAnnotation(
+                        annotationProxy.builder(scheduledMethod.getGreenObserved(), GreenObserved.class).build(classOutput));
+            }
             scheduledMetadata.add(metadata);
         }
 

@@ -21,9 +21,10 @@ public class SchedulerRecorder {
 
     private List<ScheduledMethod> immutableCopy(List<MutableScheduledMethod> scheduledMethods) {
         List<ScheduledMethod> metadata = new ArrayList<>(scheduledMethods.size());
-        for (ScheduledMethod scheduledMethod : scheduledMethods) {
+        for (MutableScheduledMethod scheduledMethod : scheduledMethods) {
             metadata.add(new ImmutableScheduledMethod(scheduledMethod.getInvokerClassName(),
-                    scheduledMethod.getDeclaringClassName(), scheduledMethod.getMethodName(), scheduledMethod.getSchedules()));
+                    scheduledMethod.getDeclaringClassName(), scheduledMethod.getMethodName(), scheduledMethod.getSchedules(),
+                    scheduledMethod.getGreenObservedAnnotation()));
         }
         return List.copyOf(metadata);
     }

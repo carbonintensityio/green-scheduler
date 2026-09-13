@@ -39,7 +39,7 @@ public class QuarkusScheduler implements AutoCloseable {
             ScheduledInvoker invoker = context.createInvoker(method.getInvokerClassName());
             var schedules = method.getSchedules().stream().map(this::lookupConfiguration).collect(Collectors.toList());
             greenScheduler.scheduleMethod(new ImmutableScheduledMethod(invoker, method.getDeclaringClassName(),
-                    method.getMethodName(), schedules));
+                    method.getMethodName(), schedules, method.getGreenObserved().orElse(null)));
         }
     }
 
