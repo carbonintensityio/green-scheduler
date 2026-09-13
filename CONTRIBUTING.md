@@ -100,6 +100,12 @@ is followed for every pull request.
   link to the official docs instead. That way our documentation only changes when we actually change something.
 * Don't reinvent something the underlying framework already provides, and don't duplicate logic between the Quarkus and
   Spring Boot extension modules - if both need it, it belongs in a shared place.
+* A feature that a `core` component only *consumes* through data an extension is responsible for supplying (an
+  annotation attribute, scheduled-method metadata, ...) needs at least one test at the extension level asserting the
+  value actually arrives where `core` expects it - a unit test that only exercises `core` classes directly (e.g.
+  constructing `core`'s own metadata objects by hand) proves the consuming side works, not that any extension ever
+  calls it. `@GreenObserved`'s `carbonImpact` flag shipped fully wired in `core` while silently never reaching any
+  extension for weeks, caught only by an unrelated pilot run - a `core`-only test would not have caught it.
 * Builder methods shouldn't silently depend on each other's call order (e.g. a `withEnd()` that assumes `withStart()`
   was called first). If two builder calls are really one concept, combine them into a single method instead.
 
