@@ -30,7 +30,7 @@ Java, Quarkus and Spring Boot each move fast enough that "works with the version
 | | Required (blocks a release if broken) |
 |---|---|
 | Java | 17, 25 |
-| Quarkus | every active LTS line (currently 3.27 and 3.33) |
+| Quarkus | every active LTS line (currently 3.27, 3.33 and 3.40) |
 | Spring Boot | every active line of the current major, plus the last line of the previous major (currently 3.5, 4.0 and 4.1) |
 
 A newer, not-yet-LTS Quarkus line is checked too, but as a canary: we want to know early if something's about to break, without blocking on a line nobody's committed to supporting yet. See `compatibility/policy.yaml` for the exact selection rules and `docs/adr/0001-compatibility-testing-strategy.md` for the reasoning behind them.
