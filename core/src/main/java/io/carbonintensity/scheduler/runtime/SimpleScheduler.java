@@ -682,6 +682,11 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
             return super.isOverdue();
         }
 
+        @Override
+        public Strategy getStrategy() {
+            return Strategy.SUCCESSIVE;
+        }
+
         /**
          * The nearest occurrence a plain, carbon-unaware interval trigger (firing every
          * {@link #calculateFallbackInterval}, starting from {@code start}) would have had to
@@ -771,6 +776,11 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
             this.greenObserved = greenObserved;
         }
 
+        @Override
+        public Optional<GreenObserved> getGreenObserved() {
+            return Optional.ofNullable(greenObserved);
+        }
+
         boolean isCarbonImpactEnabled() {
             GreenObserved observed = greenObserved;
             return observed != null && observed.carbonImpact();
@@ -780,7 +790,8 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
             this.carbonIntensityZone = carbonIntensityZone;
         }
 
-        String getCarbonIntensityZone() {
+        @Override
+        public String getCarbonIntensityZone() {
             return carbonIntensityZone;
         }
 
@@ -868,6 +879,11 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
             }
         }
 
+        @Override
+        public Strategy getStrategy() {
+            return Strategy.CRON;
+        }
+
         public String toString() {
             return "CronTrigger [id=" + this.id + ", cron=" + this.cron.asString() + ", gracePeriod=" + this.gracePeriod
                     + ", timeZone=" + this.timeZone + "]";
@@ -899,6 +915,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
         private final CarbonIntensityPlanner<FixedWindowPlanningConstraints> planner;
         private final Duration overdueGracePeriod;
         private FixedWindowPlanningConstraints constraints;
+        private volatile WindowFireMode lastWindowFireMode;
 
         FixedWindowTrigger(String id, String description, Duration overdueGracePeriod,
                 CarbonIntensityPlanner<FixedWindowPlanningConstraints> planner,
@@ -921,7 +938,11 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
         ZonedDateTime evaluate(ZonedDateTime now) {
             if (!planner.canSchedule(constraints)) {
                 // fallback to cron trigger
-                return super.evaluate(now);
+                ZonedDateTime fallbackFireTime = super.evaluate(now);
+                if (fallbackFireTime != null) {
+                    lastWindowFireMode = WindowFireMode.FALLBACK;
+                }
+                return fallbackFireTime;
             }
 
             if (!(now.isAfter(constraints.getStart())
@@ -937,6 +958,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
                     if (now.isAfter(nextTruncated) && (lastFireTime == null || lastFireTime.isBefore(nextTruncated))) {
                         log.trace("{} fired, trigger={}, updating constraints for next run", this, nextTruncated);
                         lastFireTime = now;
+                        lastWindowFireMode = WindowFireMode.OPTIMIZED;
                         constraints = DefaultFixedWindowPlanningConstraints.from(constraints)
                                 .withStartAndEnd(constraints.getStart().plusDays(1), constraints.getEnd().plusDays(1))
                                 .build();
@@ -951,6 +973,16 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
         @Override
         public boolean isOverdue() {
             return false;
+        }
+
+        @Override
+        public Strategy getStrategy() {
+            return Strategy.FIXED_WINDOW;
+        }
+
+        @Override
+        public Optional<WindowFireMode> getLastWindowFireMode() {
+            return Optional.ofNullable(lastWindowFireMode);
         }
 
         /**

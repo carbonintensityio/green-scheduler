@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.ScheduledExecution;
+import io.carbonintensity.scheduler.Scheduler;
 import io.carbonintensity.scheduler.SkipPredicate;
 
 /**
@@ -35,7 +36,7 @@ public final class SkipPredicateInvoker extends DelegateInvoker {
                 execution.getScheduledFireTime());
         if (predicate.test(execution)) {
             log.debug("Skipped scheduled invoker execution: {}", delegate.getClass().getName());
-            events.fireJobExecutionSkipped(execution, predicate.getClass().getName());
+            events.fireJobExecutionSkipped(execution, Scheduler.SkipReason.SKIP_PREDICATE, predicate.getClass().getName());
             return CompletableFuture.completedStage(null);
         } else {
             return invokeDelegate(execution);
