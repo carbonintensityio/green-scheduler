@@ -106,6 +106,25 @@ public interface Scheduler {
         default void jobExecutionSkipped(ScheduledExecution execution, String detail) {
         }
 
+        /**
+         * Same event as {@link #jobExecutionSkipped(ScheduledExecution, String)}, additionally carrying a
+         * structured, stable {@link SkipReason} - {@code detail} alone (a free-text/class-name string, see
+         * {@link io.carbonintensity.scheduler.runtime.SkipPredicateInvoker}/
+         * {@link io.carbonintensity.scheduler.runtime.SkipConcurrentExecutionInvoker}) is not safe for a listener to
+         * key metrics/logic off, since its exact wording is not part of any API contract.
+         * <p>
+         * Delegates to {@link #jobExecutionSkipped(ScheduledExecution, String)} by default, so existing listeners
+         * that only override the string-only overload keep working unchanged; override this one instead of that one
+         * when the reason needs to drive behavior, not just be logged.
+         *
+         * @param execution the execution that was skipped
+         * @param reason the structured reason the execution was skipped
+         * @param detail free-text/class-name detail, kept for logging/debugging
+         */
+        default void jobExecutionSkipped(ScheduledExecution execution, SkipReason reason, String detail) {
+            jobExecutionSkipped(execution, detail);
+        }
+
         default void jobExecutionSuccessful(ScheduledExecution execution) {
         }
 
@@ -125,6 +144,21 @@ public interface Scheduler {
 
         default void schedulerResumed() {
         }
+    }
+
+    /**
+     * Why a job's execution was skipped - see
+     * {@link EventListener#jobExecutionSkipped(ScheduledExecution, SkipReason, String)}.
+     */
+    enum SkipReason {
+        /**
+         * @see io.carbonintensity.scheduler.ConcurrentExecution#SKIP
+         */
+        CONCURRENT_EXECUTION,
+        /**
+         * @see GreenScheduled#skipExecutionIf()
+         */
+        SKIP_PREDICATE
     }
 
     /**

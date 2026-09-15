@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.ScheduledExecution;
+import io.carbonintensity.scheduler.Scheduler;
 
 /**
  * An invoker wrapper that skips concurrent executions.
@@ -38,7 +39,8 @@ public final class SkipConcurrentExecutionInvoker extends DelegateInvoker {
         }
         log.debug("Skipped scheduled invoker execution for job '{}' at {}", execution.getTrigger().getId(),
                 execution.getScheduledFireTime());
-        events.fireJobExecutionSkipped(execution, "The scheduled method should not be executed concurrently");
+        events.fireJobExecutionSkipped(execution, Scheduler.SkipReason.CONCURRENT_EXECUTION,
+                "The scheduled method should not be executed concurrently");
         return CompletableFuture.completedStage(null);
     }
 

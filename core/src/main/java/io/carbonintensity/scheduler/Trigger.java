@@ -66,4 +66,62 @@ public interface Trigger {
         return Optional.empty();
     }
 
+    /**
+     * @return the {@link GreenObserved} configuration co-located with this job's {@link GreenScheduled}, or empty if
+     *         the job did not opt into observability at all. An extension exports metrics for this job only when
+     *         this is present - see {@link GreenObserved}.
+     */
+    default Optional<GreenObserved> getGreenObserved() {
+        return Optional.empty();
+    }
+
+    /**
+     * @return the {@link GreenScheduled#carbonIntensityZone()} configured for this job, or {@code null} for a
+     *         trigger not associated with one (e.g. a purely internal, non-{@link GreenScheduled} trigger)
+     */
+    default String getCarbonIntensityZone() {
+        return null;
+    }
+
+    /**
+     * @return the scheduling strategy this job is configured with, or {@code null} for a trigger not associated
+     *         with one (e.g. a purely internal, non-{@link GreenScheduled} trigger)
+     * @see GreenScheduled#fixedWindow()
+     * @see GreenScheduled#successive()
+     * @see GreenScheduled#cron()
+     */
+    default Strategy getStrategy() {
+        return null;
+    }
+
+    /**
+     * @return the {@link WindowFireMode} of this job's most recent execution, or empty if it has not fired yet, or
+     *         its {@link #getStrategy()} is not {@link Strategy#FIXED_WINDOW}
+     */
+    default Optional<WindowFireMode> getLastWindowFireMode() {
+        return Optional.empty();
+    }
+
+    /**
+     * The scheduling strategy a {@link GreenScheduled} job is configured with.
+     */
+    enum Strategy {
+        FIXED_WINDOW,
+        SUCCESSIVE,
+        CRON
+    }
+
+    /**
+     * Which of the two ways a {@code fixedWindow} job's most recent execution was scheduled: the carbon-aware
+     * planner found a slot ({@link #OPTIMIZED}), or it could not, and the job ran on its fallback cron schedule
+     * instead ({@link #FALLBACK}).
+     * <p>
+     * Only meaningful for {@link Strategy#FIXED_WINDOW} - {@link Strategy#SUCCESSIVE} and {@link Strategy#CRON} have
+     * no such distinction.
+     */
+    enum WindowFireMode {
+        OPTIMIZED,
+        FALLBACK
+    }
+
 }

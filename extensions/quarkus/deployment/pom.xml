@@ -33,6 +33,12 @@
             <artifactId>quarkus-vertx-http-deployment</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Exercises the capability-gated GreenSchedulerMeterBinder bean registration end to end (CIIO-348) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-deployment</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5-internal</artifactId>

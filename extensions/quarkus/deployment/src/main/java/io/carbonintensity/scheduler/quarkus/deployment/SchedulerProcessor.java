@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -71,6 +72,7 @@ import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
+import io.quarkus.deployment.metrics.MetricsCapabilityBuildItem;
 import io.quarkus.gizmo2.ClassOutput;
 import io.quarkus.gizmo2.Const;
 import io.quarkus.gizmo2.Expr;
@@ -80,6 +82,7 @@ import io.quarkus.gizmo2.ParamVar;
 import io.quarkus.gizmo2.desc.InterfaceMethodDesc;
 import io.quarkus.gizmo2.desc.MethodDesc;
 import io.quarkus.runtime.annotations.ConfigPhase;
+import io.quarkus.runtime.metrics.MetricsFactory;
 import io.quarkus.runtime.util.HashUtil;
 
 public class SchedulerProcessor {
@@ -112,6 +115,37 @@ public class SchedulerProcessor {
     void beans(BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
         additionalBeans.produce(new AdditionalBeanBuildItem(QuarkusScheduler.class));
         additionalBeans.produce(new AdditionalBeanBuildItem(SchedulerProducer.class));
+    }
+
+    /**
+     * Registers the {@code @GreenObserved} Micrometer meter binder as a CDI bean, but only when Micrometer
+     * specifically is active - referenced by its fully-qualified name, not a {@code .class} literal, precisely so
+     * this module never needs Micrometer on its own compile classpath. Without this guard, the bean would be
+     * eligible for eager CDI discovery regardless of Micrometer's presence, and its constructor's mandatory
+     * {@code MeterRegistry} injection point would fail application startup for every consumer that doesn't use
+     * Micrometer.
+     * <p>
+     * Deliberately checks {@link MetricsCapabilityBuildItem#metricsSupported} against
+     * {@link MetricsFactory#MICROMETER}, not the generic {@code Capability.METRICS} - that capability string is
+     * shared by every metrics system Quarkus supports (e.g. {@code quarkus-smallrye-metrics}, which provides no
+     * {@code MeterRegistry} bean at all), so gating on it alone would register this bean - and fail application
+     * startup - for a consumer using a non-Micrometer metrics extension.
+     * <p>
+     * The actual meter-registration logic lives entirely in {@code extensions/quarkus/runtime} - see
+     * {@code io.carbonintensity.scheduler.quarkus.runtime.metrics.GreenSchedulerMeterBinder} - this build step only
+     * makes that runtime class discoverable to Arc under the right condition.
+     */
+    @BuildStep
+    void micrometerMeterBinder(Optional<MetricsCapabilityBuildItem> metricsCapability,
+            BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
+        boolean micrometerActive = metricsCapability.map(m -> m.metricsSupported(MetricsFactory.MICROMETER))
+                .orElse(false);
+        if (micrometerActive) {
+            additionalBeans.produce(AdditionalBeanBuildItem.builder()
+                    .addBeanClass("io.carbonintensity.scheduler.quarkus.runtime.metrics.GreenSchedulerMeterBinder")
+                    .setUnremovable()
+                    .build());
+        }
     }
 
     @BuildStep

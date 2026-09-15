@@ -81,9 +81,9 @@ public final class Events {
         }
     }
 
-    void fireJobExecutionSkipped(ScheduledExecution execution, String details) {
+    void fireJobExecutionSkipped(ScheduledExecution execution, Scheduler.SkipReason reason, String details) {
         for (Scheduler.EventListener listener : simpleScheduler.getEventListeners()) {
-            listener.jobExecutionSkipped(execution, details);
+            listener.jobExecutionSkipped(execution, reason, details);
         }
     }
 
