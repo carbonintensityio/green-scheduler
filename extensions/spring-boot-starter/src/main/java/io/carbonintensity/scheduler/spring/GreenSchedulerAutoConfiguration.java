@@ -4,6 +4,7 @@ import jakarta.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -23,6 +24,7 @@ import io.carbonintensity.scheduler.spring.factory.SchedulerConfigBuilder;
 import io.carbonintensity.scheduler.spring.factory.SchedulerFactory;
 import io.carbonintensity.scheduler.spring.factory.SimpleSchedulerFactory;
 import io.carbonintensity.scheduler.spring.factory.SpringSchedulerFactory;
+import io.carbonintensity.scheduler.spring.observability.SchedulingMetricsInstrumenter;
 
 /**
  * Green Scheduler Spring {@link AutoConfiguration}.
@@ -83,14 +85,32 @@ public class GreenSchedulerAutoConfiguration {
         return new ScheduledMethodFactory();
     }
 
+    // Absent unless a Micrometer MeterRegistry bean is present - see GreenSchedulerMetricsAutoConfiguration. This
+    // field is deliberately typed as the Micrometer-agnostic SchedulingMetricsInstrumenter, never as
+    // GreenSchedulerMetricsBinder itself, so this class never needs to resolve a Micrometer class either way.
+    // Deliberately an ObjectProvider, not a plain @Autowired(required = false) field: GreenSchedulerMetricsBinder's
+    // own @Bean method needs the SchedulerConfig bean defined below, which in turn needs this very configuration
+    // class fully constructed - a plain field would force eager resolution during that construction and deadlock as
+    // a circular dependency. ObjectProvider defers resolution until handleContextStart() actually asks for it,
+    // safely after context refresh.
+    @Autowired
+    private ObjectProvider<SchedulingMetricsInstrumenter> metricsInstrumenterProvider;
+
     @EventListener
     public void handleContextStart(ContextRefreshedEvent event) {
         var simpleScheduler = (SimpleScheduler) springSchedulerFactory().getObject();
+        var metricsInstrumenter = metricsInstrumenterProvider.getIfAvailable();
         while (greenSchedulerBeanProcessor.hasNext()) {
             var beanInfo = greenSchedulerBeanProcessor.next();
             logger.info("Green scheduler bean {}", beanInfo.getBean());
             var scheduledMethod = scheduledMethodFactory().create(beanInfo.getBean(), beanInfo.getBeanMethod());
+            if (metricsInstrumenter != null) {
+                metricsInstrumenter.instrumentInvoker(scheduledMethod);
+            }
             simpleScheduler.scheduleMethod(scheduledMethod);
+            if (metricsInstrumenter != null) {
+                metricsInstrumenter.bindMetrics(scheduledMethod, simpleScheduler);
+            }
         }
     }
 
