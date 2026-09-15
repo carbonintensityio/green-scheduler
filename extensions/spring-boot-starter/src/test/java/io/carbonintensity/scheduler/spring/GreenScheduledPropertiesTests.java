@@ -22,12 +22,18 @@ class GreenScheduledPropertiesTests {
         assertThat(properties.getShutdownGracePeriod()).hasValue(DEFAULT_SHUTDOWN_GRACE_PERIOD);
         assertThat(properties.getApiUrl()).hasValue(DEFAULT_API_URL);
         assertThat(properties.getApiKey()).isNotPresent();
+        assertThat(properties.getCarbonIntensityRetryMaxAttempts()).isNotPresent();
+        assertThat(properties.getCarbonIntensityRetryInitialBackoff()).isNotPresent();
+        assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).isNotPresent();
+        assertThat(properties.getCarbonIntensityRetryBudget()).isNotPresent();
+        assertThat(properties.getCarbonIntensityStalenessThreshold()).isNotPresent();
     }
 
     @Test
     void whenOverridingDefaultValues_thenSetOverriddenValues() {
         GreenSchedulerProperties properties = new GreenSchedulerProperties(true, SchedulerConfig.StartMode.HALTED, 1, 2,
-                Duration.ofSeconds(1), Duration.ofSeconds(2), "apiKey", "apiUrl");
+                Duration.ofSeconds(1), Duration.ofSeconds(2), "apiKey", "apiUrl", 5, Duration.ofMillis(500), 2.5,
+                Duration.ofSeconds(3), Duration.ofHours(6));
 
         assertThat(properties.getEnabled()).hasValue(true);
         assertThat(properties.getJobExecutors()).hasValue(1);
@@ -36,6 +42,11 @@ class GreenScheduledPropertiesTests {
         assertThat(properties.getShutdownGracePeriod()).hasValue(Duration.ofSeconds(2));
         assertThat(properties.getApiUrl()).hasValue("apiUrl");
         assertThat(properties.getApiKey()).hasValue("apiKey");
+        assertThat(properties.getCarbonIntensityRetryMaxAttempts()).hasValue(5);
+        assertThat(properties.getCarbonIntensityRetryInitialBackoff()).hasValue(Duration.ofMillis(500));
+        assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).hasValue(2.5);
+        assertThat(properties.getCarbonIntensityRetryBudget()).hasValue(Duration.ofSeconds(3));
+        assertThat(properties.getCarbonIntensityStalenessThreshold()).hasValue(Duration.ofHours(6));
     }
 
 }

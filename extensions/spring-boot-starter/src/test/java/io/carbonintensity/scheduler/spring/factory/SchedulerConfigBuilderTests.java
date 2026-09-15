@@ -186,6 +186,44 @@ class SchedulerConfigBuilderTests {
     }
 
     @Test
+    void testCarbonIntensityRetryAndStalenessConfig() {
+        var schedulerConfig = builder
+                .apiKey("apiKey")
+                .apiUrl("apiUrl")
+                .retryMaxAttempts(5)
+                .retryInitialBackoff(Duration.ofMillis(500))
+                .retryBackoffMultiplier(2.5)
+                .retryBudget(Duration.ofSeconds(3))
+                .stalenessThreshold(Duration.ofHours(6))
+                .build();
+
+        var apiConfig = schedulerConfig.getCarbonIntensityApiConfig();
+        assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(5);
+        assertThat(apiConfig.getRetryInitialBackoff()).isEqualTo(Duration.ofMillis(500));
+        assertThat(apiConfig.getRetryBackoffMultiplier()).isEqualTo(2.5);
+        assertThat(apiConfig.getRetryBudget()).isEqualTo(Duration.ofSeconds(3));
+        assertThat(apiConfig.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+
+        assertThrows(IllegalArgumentException.class, () -> builder.retryMaxAttempts(0));
+        assertThrows(IllegalArgumentException.class, () -> builder.retryBackoffMultiplier(0.5));
+        assertThrows(IllegalArgumentException.class, () -> builder.retryInitialBackoff(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.retryBudget(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.stalenessThreshold(null));
+    }
+
+    @Test
+    void whenRetryAndStalenessFieldsAreNotConfigured_thenCarbonIntensityApiConfigAppliesItsOwnDefaults() {
+        var schedulerConfig = builder
+                .apiKey("apiKey")
+                .apiUrl("apiUrl")
+                .build();
+
+        var apiConfig = schedulerConfig.getCarbonIntensityApiConfig();
+        assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_MAX_ATTEMPTS);
+        assertThat(apiConfig.getStalenessThreshold()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_STALENESS_THRESHOLD);
+    }
+
+    @Test
     void testCarbonIntensityApi() {
         var mockApi = mock(CarbonIntensityApi.class);
         var schedulerConfig = builder

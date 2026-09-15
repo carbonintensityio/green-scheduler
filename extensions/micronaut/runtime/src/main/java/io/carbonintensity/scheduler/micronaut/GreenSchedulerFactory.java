@@ -41,6 +41,11 @@ public class GreenSchedulerFactory {
             config.setCarbonIntensityApiConfig(new CarbonIntensityApiConfig.Builder()
                     .apiKey(properties.getApiKey())
                     .apiUrl(properties.getApiUrl())
+                    .retryMaxAttempts(properties.getCarbonIntensityRetryMaxAttempts())
+                    .retryInitialBackoff(properties.getCarbonIntensityRetryInitialBackoff())
+                    .retryBackoffMultiplier(properties.getCarbonIntensityRetryBackoffMultiplier())
+                    .retryBudget(properties.getCarbonIntensityRetryBudget())
+                    .stalenessThreshold(properties.getCarbonIntensityStalenessThreshold())
                     .build());
         }
         return config;

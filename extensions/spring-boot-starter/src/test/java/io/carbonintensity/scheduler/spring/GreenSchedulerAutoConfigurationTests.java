@@ -77,6 +77,32 @@ class GreenSchedulerAutoConfigurationTests {
     }
 
     @Test
+    void givenCarbonIntensityRetryProperties_thenTheyReachCarbonIntensityApiConfig() {
+        // Proves the CIIO-470 retry/staleness properties bind through Spring's real relaxed-binding
+        // machinery (kebab-case property names to camelCase constructor parameters) and reach
+        // CarbonIntensityApiConfig via GreenSchedulerAutoConfiguration - not just that SchedulerConfigBuilder
+        // accepts these values when called directly (see SchedulerConfigBuilderTests for that).
+        this.contextRunner
+                .withConfiguration(AutoConfigurations.of(GreenSchedulerAutoConfiguration.class))
+                .withPropertyValues(
+                        "green-scheduler.api-key=test-api-key",
+                        "green-scheduler.api-url=https://example.invalid/api",
+                        "green-scheduler.carbon-intensity-retry-max-attempts=5",
+                        "green-scheduler.carbon-intensity-retry-initial-backoff=PT0.5S",
+                        "green-scheduler.carbon-intensity-retry-backoff-multiplier=2.5",
+                        "green-scheduler.carbon-intensity-retry-budget=PT3S",
+                        "green-scheduler.carbon-intensity-staleness-threshold=PT6H")
+                .run(context -> {
+                    var apiConfig = context.getBean(SchedulerConfig.class).getCarbonIntensityApiConfig();
+                    assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(5);
+                    assertThat(apiConfig.getRetryInitialBackoff()).isEqualTo(Duration.ofMillis(500));
+                    assertThat(apiConfig.getRetryBackoffMultiplier()).isEqualTo(2.5);
+                    assertThat(apiConfig.getRetryBudget()).isEqualTo(Duration.ofSeconds(3));
+                    assertThat(apiConfig.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+                });
+    }
+
+    @Test
     void givenUserConfiguration_whenJobsDefined_thenCreateAndStartScheduler() {
         this.contextRunner
                 .withUserConfiguration(ConfigurationWithOneJob.class)

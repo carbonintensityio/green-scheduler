@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,13 @@ import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 
 /**
  * Rest client for fetching prediction data from a remote end point.
+ * <p>
+ * A single {@link #getCarbonIntensity(ZonedCarbonIntensityPeriod)} call retries a short, bounded number of
+ * times (see {@link CarbonIntensityApiConfig}) - but only on a transient, connection-level failure
+ * ({@link TransientConnectivityErrors}), never on a real HTTP error response. This is deliberately kept
+ * short: {@code SimpleScheduler.checkTriggers()} in {@code core} evaluates every registered job serially on
+ * a shared, small thread pool and blocks on this call, so a long retry here would delay every other job's
+ * trigger evaluation, not just the affected one. See CIIO-470.
  */
 public class CarbonIntensityRestApi implements CarbonIntensityApi {
 
@@ -32,6 +40,7 @@ public class CarbonIntensityRestApi implements CarbonIntensityApi {
     private final CarbonIntensityApiConfig config;
     private final HttpClient httpClient;
     private final CarbonIntensityApiType carbonIntensityApiType;
+    private final CarbonIntensityJsonParser jsonParser = new CarbonIntensityJsonParser();
 
     public CarbonIntensityRestApi(CarbonIntensityApiConfig config, CarbonIntensityApiType carbonIntensityApiType) {
         this.config = config;
@@ -61,10 +70,45 @@ public class CarbonIntensityRestApi implements CarbonIntensityApi {
         var uri = getUri(zonedPeriod.getStartTime(), zonedPeriod.getZone());
         logger.debug("Requesting url {}", uri);
         var request = createRequest(uri);
+        long deadlineNanos = System.nanoTime() + config.getRetryBudget().toNanos();
+        return attempt(request, 1, deadlineNanos)
+                .orTimeout(config.getRetryBudget().toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * @param attemptNumber 1-based number of this attempt
+     */
+    private CompletableFuture<CarbonIntensity> attempt(HttpRequest request, int attemptNumber, long deadlineNanos) {
+        return sendOnce(request).exceptionallyCompose(error -> retryOrFail(request, attemptNumber, deadlineNanos, error));
+    }
+
+    private CompletableFuture<CarbonIntensity> retryOrFail(HttpRequest request, int attemptNumber, long deadlineNanos,
+            Throwable error) {
+        Throwable cause = TransientConnectivityErrors.unwrap(error);
+        if (attemptNumber >= config.getRetryMaxAttempts() || !TransientConnectivityErrors.isTransient(cause)) {
+            return CompletableFuture.failedFuture(error);
+        }
+
+        long delayMillis = RetryBackoff.delayMillis(attemptNumber, config.getRetryInitialBackoff(),
+                config.getRetryBackoffMultiplier());
+        if (System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis) >= deadlineNanos) {
+            logger.debug("Not retrying CarbonIntensity API call: the {} retry budget would be exceeded",
+                    config.getRetryBudget());
+            return CompletableFuture.failedFuture(error);
+        }
+
+        logger.debug("Transient error contacting CarbonIntensity API (attempt {}/{}), retrying in {} ms",
+                attemptNumber, config.getRetryMaxAttempts(), delayMillis, cause);
+        return CompletableFuture
+                .supplyAsync(() -> null, CompletableFuture.delayedExecutor(delayMillis, TimeUnit.MILLISECONDS))
+                .thenCompose(ignored -> attempt(request, attemptNumber + 1, deadlineNanos));
+    }
+
+    private CompletableFuture<CarbonIntensity> sendOnce(HttpRequest request) {
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
                 .thenApply(CarbonIntensityRestApi::ensureStatusCode)
                 .thenApply(HttpResponse::body)
-                .thenApply(new CarbonIntensityJsonParser()::parse);
+                .thenApply(jsonParser::parse);
     }
 
     @Override

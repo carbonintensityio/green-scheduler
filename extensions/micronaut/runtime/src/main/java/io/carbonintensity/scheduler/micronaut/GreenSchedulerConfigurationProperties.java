@@ -21,6 +21,13 @@ public class GreenSchedulerConfigurationProperties {
     private Duration shutdownGracePeriod = SchedulerDefaults.DEFAULT_SHUTDOWN_GRACE_PERIOD;
     private String apiUrl = SchedulerDefaults.DEFAULT_API_URL;
     private String apiKey;
+    // Left null (rather than defaulted here) when not configured: CarbonIntensityApiConfig.Builder applies
+    // its own CIIO-470 defaults in that case, the single source of truth for those values.
+    private Integer carbonIntensityRetryMaxAttempts;
+    private Duration carbonIntensityRetryInitialBackoff;
+    private Double carbonIntensityRetryBackoffMultiplier;
+    private Duration carbonIntensityRetryBudget;
+    private Duration carbonIntensityStalenessThreshold;
 
     public boolean isEnabled() {
         return enabled;
@@ -76,5 +83,45 @@ public class GreenSchedulerConfigurationProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public Integer getCarbonIntensityRetryMaxAttempts() {
+        return carbonIntensityRetryMaxAttempts;
+    }
+
+    public void setCarbonIntensityRetryMaxAttempts(Integer carbonIntensityRetryMaxAttempts) {
+        this.carbonIntensityRetryMaxAttempts = carbonIntensityRetryMaxAttempts;
+    }
+
+    public Duration getCarbonIntensityRetryInitialBackoff() {
+        return carbonIntensityRetryInitialBackoff;
+    }
+
+    public void setCarbonIntensityRetryInitialBackoff(Duration carbonIntensityRetryInitialBackoff) {
+        this.carbonIntensityRetryInitialBackoff = carbonIntensityRetryInitialBackoff;
+    }
+
+    public Double getCarbonIntensityRetryBackoffMultiplier() {
+        return carbonIntensityRetryBackoffMultiplier;
+    }
+
+    public void setCarbonIntensityRetryBackoffMultiplier(Double carbonIntensityRetryBackoffMultiplier) {
+        this.carbonIntensityRetryBackoffMultiplier = carbonIntensityRetryBackoffMultiplier;
+    }
+
+    public Duration getCarbonIntensityRetryBudget() {
+        return carbonIntensityRetryBudget;
+    }
+
+    public void setCarbonIntensityRetryBudget(Duration carbonIntensityRetryBudget) {
+        this.carbonIntensityRetryBudget = carbonIntensityRetryBudget;
+    }
+
+    public Duration getCarbonIntensityStalenessThreshold() {
+        return carbonIntensityStalenessThreshold;
+    }
+
+    public void setCarbonIntensityStalenessThreshold(Duration carbonIntensityStalenessThreshold) {
+        this.carbonIntensityStalenessThreshold = carbonIntensityStalenessThreshold;
     }
 }

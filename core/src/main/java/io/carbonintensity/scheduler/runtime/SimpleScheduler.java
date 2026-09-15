@@ -39,6 +39,7 @@ import io.carbonintensity.executionplanner.planner.successive.SuccessivePlanner;
 import io.carbonintensity.executionplanner.planner.successive.SuccessivePlanningConstraints;
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensityDataFetcher;
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensityDataFetcherImpl;
+import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiConfig;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiType;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityRestApi;
 import io.carbonintensity.executionplanner.spi.CarbonIntensityPlanner;
@@ -52,7 +53,6 @@ import io.carbonintensity.scheduler.SkipPredicate;
 import io.carbonintensity.scheduler.Trigger;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig.StartMode;
 import io.carbonintensity.scheduler.runtime.impl.annotation.GreenScheduledAnnotationParser;
-import io.carbonintensity.scheduler.runtime.impl.rest.CarbonIntensityFileApi;
 import io.carbonintensity.scheduler.spi.JobInstrumenter;
 
 /**
@@ -141,7 +141,9 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
 
         log.info("CarbonIntensity API: {}", carbonIntensityApi.getApiName());
 
-        this.dataFetcher = new CarbonIntensityDataFetcherImpl(carbonIntensityApi, new CarbonIntensityFileApi());
+        var carbonIntensityApiConfig = Objects.requireNonNullElseGet(schedulerConfig.getCarbonIntensityApiConfig(),
+                () -> new CarbonIntensityApiConfig.Builder().build());
+        this.dataFetcher = new CarbonIntensityDataFetcherImpl(carbonIntensityApi, carbonIntensityApiConfig, clock);
 
         if (StartMode.FORCED == schedulerConfig.getStartMode()) {
             log.info("Simple scheduler will be started, force scheduler start is enabled.");
@@ -302,6 +304,13 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
             }
         } catch (Exception e) {
             log.warn("Unable to shutdown the job executor", e);
+        }
+        try {
+            if (dataFetcher != null) {
+                dataFetcher.close();
+            }
+        } catch (Exception e) {
+            log.warn("Unable to shutdown the carbon intensity data fetcher", e);
         }
         log.info("Simple scheduler shutdown.");
         running = false;
@@ -547,7 +556,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
 
         @Override
         public Instant getNextFireTime() {
-            if (successivePlanner.canSchedule(constraints)) {
+            if (successivePlanner.canSchedule(effectiveConstraints())) {
                 return successivePlanner.getNextExecutionTime(effectiveConstraints()).toInstant();
             }
             // fallback to interval trigger
@@ -569,7 +578,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
 
         @Override
         ZonedDateTime evaluate(ZonedDateTime now) {
-            if (successivePlanner.canSchedule(constraints)) {
+            if (successivePlanner.canSchedule(effectiveConstraints())) {
                 if (now.isBefore(start)) {
                     return null;
                 }
@@ -602,7 +611,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
 
         @Override
         public boolean isOverdue() {
-            if (successivePlanner.canSchedule(constraints)) {
+            if (successivePlanner.canSchedule(effectiveConstraints())) {
                 ZonedDateTime now = ZonedDateTime.now(clock);
                 if (now.isBefore(start)) {
                     return false;

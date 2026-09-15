@@ -32,7 +32,9 @@ public class GreenSchedulerProperties {
     @ConstructorBinding // Required to generate metadata: https://stackoverflow.com/questions/79231534/how-can-i-use-optional-values-in-spring-boot-configuration-properties
     public GreenSchedulerProperties(Boolean enabled, SchedulerConfig.StartMode startMode, Integer jobExecutors,
             Integer maxConcurrentPerSlot, Duration overdueGracePeriod, Duration shutdownGracePeriod, String apiKey,
-            String apiUrl) {
+            String apiUrl, Integer carbonIntensityRetryMaxAttempts, Duration carbonIntensityRetryInitialBackoff,
+            Double carbonIntensityRetryBackoffMultiplier, Duration carbonIntensityRetryBudget,
+            Duration carbonIntensityStalenessThreshold) {
         this.enabled = Objects.requireNonNullElse(enabled, DEFAULT_ENABLED);
         this.startMode = Objects.requireNonNullElse(startMode, DEFAULT_START_MODE);
         this.jobExecutors = Objects.requireNonNullElse(jobExecutors, DEFAULT_NUMBER_OF_JOB_EXECUTORS);
@@ -41,6 +43,13 @@ public class GreenSchedulerProperties {
         this.shutdownGracePeriod = Objects.requireNonNullElse(shutdownGracePeriod, DEFAULT_SHUTDOWN_GRACE_PERIOD);
         this.apiKey = apiKey;
         this.apiUrl = Objects.requireNonNullElse(apiUrl, DEFAULT_API_URL);
+        // Left null (rather than defaulted here) when not configured: CarbonIntensityApiConfig.Builder
+        // applies its own CIIO-470 defaults in that case, the single source of truth for those values.
+        this.carbonIntensityRetryMaxAttempts = carbonIntensityRetryMaxAttempts;
+        this.carbonIntensityRetryInitialBackoff = carbonIntensityRetryInitialBackoff;
+        this.carbonIntensityRetryBackoffMultiplier = carbonIntensityRetryBackoffMultiplier;
+        this.carbonIntensityRetryBudget = carbonIntensityRetryBudget;
+        this.carbonIntensityStalenessThreshold = carbonIntensityStalenessThreshold;
     }
 
     public GreenSchedulerProperties() {
@@ -88,6 +97,36 @@ public class GreenSchedulerProperties {
      * CarbonIntensity API url.
      */
     private String apiUrl = DEFAULT_API_URL;
+
+    /**
+     * Total attempts (1 original + retries) for a single carbon-intensity fetch on the scheduler's critical
+     * path. Only retried on a transient connectivity error, never on an HTTP error response. Default 3.
+     */
+    private Integer carbonIntensityRetryMaxAttempts;
+
+    /**
+     * Delay before the first carbon-intensity fetch retry; each subsequent retry multiplies this by
+     * {@link #carbonIntensityRetryBackoffMultiplier}. Default 300ms.
+     */
+    private Duration carbonIntensityRetryInitialBackoff;
+
+    /**
+     * Multiplier applied to the previous backoff for each subsequent carbon-intensity fetch retry. Default
+     * 3.0 (with the default initial backoff: 300ms, then 900ms).
+     */
+    private Double carbonIntensityRetryBackoffMultiplier;
+
+    /**
+     * Hard ceiling on the total time (across all attempts) a single carbon-intensity fetch may take.
+     * Default 2 seconds.
+     */
+    private Duration carbonIntensityRetryBudget;
+
+    /**
+     * How old a last-known-good carbon-intensity value per zone may be and still be reused as a genuine
+     * carbon-aware decision when the live API is unreachable. Default 4 hours.
+     */
+    private Duration carbonIntensityStalenessThreshold;
 
     /**
      * Gets scheduler start mode.
@@ -149,5 +188,25 @@ public class GreenSchedulerProperties {
 
     public Optional<String> getApiUrl() {
         return Optional.ofNullable(apiUrl);
+    }
+
+    public Optional<Integer> getCarbonIntensityRetryMaxAttempts() {
+        return Optional.ofNullable(carbonIntensityRetryMaxAttempts);
+    }
+
+    public Optional<Duration> getCarbonIntensityRetryInitialBackoff() {
+        return Optional.ofNullable(carbonIntensityRetryInitialBackoff);
+    }
+
+    public Optional<Double> getCarbonIntensityRetryBackoffMultiplier() {
+        return Optional.ofNullable(carbonIntensityRetryBackoffMultiplier);
+    }
+
+    public Optional<Duration> getCarbonIntensityRetryBudget() {
+        return Optional.ofNullable(carbonIntensityRetryBudget);
+    }
+
+    public Optional<Duration> getCarbonIntensityStalenessThreshold() {
+        return Optional.ofNullable(carbonIntensityStalenessThreshold);
     }
 }

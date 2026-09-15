@@ -23,6 +23,11 @@ public class SchedulerConfigBuilder {
     private String apiKey;
     private String apiUrl;
     private CarbonIntensityApi carbonIntensityApi;
+    private Integer retryMaxAttempts;
+    private Duration retryInitialBackoff;
+    private Double retryBackoffMultiplier;
+    private Duration retryBudget;
+    private Duration stalenessThreshold;
 
     /**
      * Constructor starting with default {@link SchedulerConfig}.
@@ -57,6 +62,16 @@ public class SchedulerConfigBuilder {
                 .ifPresent(this::apiKey);
         properties.getApiUrl()
                 .ifPresent(this::apiUrl);
+        properties.getCarbonIntensityRetryMaxAttempts()
+                .ifPresent(this::retryMaxAttempts);
+        properties.getCarbonIntensityRetryInitialBackoff()
+                .ifPresent(this::retryInitialBackoff);
+        properties.getCarbonIntensityRetryBackoffMultiplier()
+                .ifPresent(this::retryBackoffMultiplier);
+        properties.getCarbonIntensityRetryBudget()
+                .ifPresent(this::retryBudget);
+        properties.getCarbonIntensityStalenessThreshold()
+                .ifPresent(this::stalenessThreshold);
     }
 
     public SchedulerConfigBuilder startMode(SchedulerConfig.StartMode startMode) {
@@ -126,6 +141,38 @@ public class SchedulerConfigBuilder {
         return this;
     }
 
+    public SchedulerConfigBuilder retryMaxAttempts(Integer retryMaxAttempts) {
+        Assert.notNull(retryMaxAttempts, "retryMaxAttempts cannot be null");
+        Assert.isTrue(retryMaxAttempts >= 1, "retryMaxAttempts must be at least 1");
+        this.retryMaxAttempts = retryMaxAttempts;
+        return this;
+    }
+
+    public SchedulerConfigBuilder retryInitialBackoff(Duration retryInitialBackoff) {
+        Assert.notNull(retryInitialBackoff, "retryInitialBackoff cannot be null");
+        this.retryInitialBackoff = retryInitialBackoff;
+        return this;
+    }
+
+    public SchedulerConfigBuilder retryBackoffMultiplier(Double retryBackoffMultiplier) {
+        Assert.notNull(retryBackoffMultiplier, "retryBackoffMultiplier cannot be null");
+        Assert.isTrue(retryBackoffMultiplier >= 1.0, "retryBackoffMultiplier must be at least 1.0");
+        this.retryBackoffMultiplier = retryBackoffMultiplier;
+        return this;
+    }
+
+    public SchedulerConfigBuilder retryBudget(Duration retryBudget) {
+        Assert.notNull(retryBudget, "retryBudget cannot be null");
+        this.retryBudget = retryBudget;
+        return this;
+    }
+
+    public SchedulerConfigBuilder stalenessThreshold(Duration stalenessThreshold) {
+        Assert.notNull(stalenessThreshold, "stalenessThreshold cannot be null");
+        this.stalenessThreshold = stalenessThreshold;
+        return this;
+    }
+
     public SchedulerConfig build() {
         var schedulerConfig = new SchedulerConfig();
         schedulerConfig.setEnabled(enabled);
@@ -142,6 +189,11 @@ public class SchedulerConfigBuilder {
                     new CarbonIntensityApiConfig.Builder()
                             .apiKey(apiKey)
                             .apiUrl(apiUrl)
+                            .retryMaxAttempts(retryMaxAttempts)
+                            .retryInitialBackoff(retryInitialBackoff)
+                            .retryBackoffMultiplier(retryBackoffMultiplier)
+                            .retryBudget(retryBudget)
+                            .stalenessThreshold(stalenessThreshold)
                             .build());
         }
 
