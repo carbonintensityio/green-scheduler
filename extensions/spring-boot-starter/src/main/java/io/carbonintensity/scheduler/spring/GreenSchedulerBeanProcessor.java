@@ -13,9 +13,14 @@ import org.springframework.lang.NonNull;
 import org.springframework.util.ObjectUtils;
 
 import io.carbonintensity.scheduler.GreenScheduled;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 
 /**
  * Finder class for checking all spring managed beans and keeps {@link GreenScheduled} annotated methods.
+ * <p>
+ * Also enforces, at bean post-processing time, that {@link GreenObserved} never appears without a co-located
+ * {@link GreenScheduled} - the same rule the Quarkus extension enforces at build time via
+ * {@code GreenScheduledAnnotationValidation}, but checked here at runtime since Spring has no build-time hook.
  */
 public final class GreenSchedulerBeanProcessor implements BeanPostProcessor, Iterator<GreenSchedulerBeanInfo> {
 
@@ -33,13 +38,34 @@ public final class GreenSchedulerBeanProcessor implements BeanPostProcessor, Ite
         return !ObjectUtils.isEmpty(annotations);
     }
 
+    /**
+     * Checks if the given method has a {@link GreenObserved} annotation.
+     *
+     * @param method spring method
+     * @return true if the method is annotated with {@link GreenObserved}
+     */
+    static boolean isObservedMethod(Method method) {
+        return AnnotationUtils.findAnnotation(method, GreenObserved.class) != null;
+    }
+
     @Override
     public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) {
         var beanClass = AopUtils.getTargetClass(bean);
         var methods = beanClass.getDeclaredMethods();
-        Stream.of(methods)
-                .filter(GreenSchedulerBeanProcessor::isScheduledMethod)
-                .forEach(method -> registerBean(beanName, bean, method));
+        // Every declared method is checked for @GreenObserved, not just the ones already carrying @GreenScheduled -
+        // otherwise a @GreenObserved-only method (a co-presence mistake) would simply be skipped rather than
+        // rejected.
+        Stream.of(methods).forEach(method -> {
+            boolean scheduled = isScheduledMethod(method);
+            if (isObservedMethod(method) && !scheduled) {
+                throw new IllegalStateException(
+                        "@GreenObserved requires @GreenScheduled to be present on the same method: "
+                                + beanClass.getName() + "#" + method.getName() + "()");
+            }
+            if (scheduled) {
+                registerBean(beanName, bean, method);
+            }
+        });
         return bean;
     }
 

@@ -4,9 +4,11 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import org.springframework.aop.support.AopUtils;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.Assert;
 
 import io.carbonintensity.scheduler.GreenScheduled;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 import io.carbonintensity.scheduler.runtime.MutableScheduledMethod;
 import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
 import io.carbonintensity.scheduler.runtime.ScheduledMethod;
@@ -16,8 +18,9 @@ import io.carbonintensity.scheduler.runtime.ScheduledMethod;
  */
 public class ScheduledMethodFactory {
 
-    public ScheduledMethod create(Object bean, Method method) {
+    public MutableScheduledMethod create(Object bean, Method method) {
         var greenScheduledAnnotationList = getGreenScheduledAnnotations(method);
+        var greenObserved = getGreenObservedAnnotation(method);
         var beanClass = AopUtils.getTargetClass(bean);
         var invoker = new MethodScheduledInvoker(bean, method);
 
@@ -25,6 +28,7 @@ public class ScheduledMethodFactory {
                 .scheduledMethod(method)
                 .beanClass(beanClass)
                 .greenScheduledAnnotationList(greenScheduledAnnotationList)
+                .greenObserved(greenObserved)
                 .invoker(invoker)
                 .build();
     }
@@ -33,10 +37,18 @@ public class ScheduledMethodFactory {
         return List.of(method.getDeclaredAnnotationsByType(GreenScheduled.class));
     }
 
+    /**
+     * @return the {@link GreenObserved} annotation present on the method, or {@code null} if absent
+     */
+    static GreenObserved getGreenObservedAnnotation(Method method) {
+        return AnnotationUtils.findAnnotation(method, GreenObserved.class);
+    }
+
     static class MutableScheduledMethodBuilder {
         private Method scheduledMethod = null;
         private ScheduledInvoker invoker = null;
         private List<GreenScheduled> greenScheduledAnnotationList = null;
+        private GreenObserved greenObserved = null;
         private Class<?> beanClass = null;
 
         public MutableScheduledMethodBuilder scheduledMethod(Method method) {
@@ -63,6 +75,14 @@ public class ScheduledMethodFactory {
             return this;
         }
 
+        /**
+         * @param greenObserved the {@link GreenObserved} annotation present on the method, or {@code null} if absent
+         */
+        public MutableScheduledMethodBuilder greenObserved(GreenObserved greenObserved) {
+            this.greenObserved = greenObserved;
+            return this;
+        }
+
         public MutableScheduledMethod build() {
             Assert.state(this.scheduledMethod != null, "method cannot be null");
             Assert.state(this.invoker != null, "invoker cannot be null");
@@ -74,6 +94,7 @@ public class ScheduledMethodFactory {
             newScheduledMethod.setDeclaringClassName(this.beanClass.getName());
             newScheduledMethod.setInvoker(this.invoker);
             newScheduledMethod.setSchedules(this.greenScheduledAnnotationList);
+            newScheduledMethod.setGreenObserved(this.greenObserved);
             return newScheduledMethod;
         }
 
