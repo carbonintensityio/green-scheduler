@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -84,6 +85,24 @@ class TestCarbonIntensityDataFetcher {
         when(restApi.getCarbonIntensity(zonedPeriod)).thenReturn(CompletableFuture.completedFuture(carbonIntensity));
 
         assertThat(dataFetcher.fetchCarbonIntensity(zonedPeriod)).isEqualTo(carbonIntensity);
+    }
+
+    @Test
+    void givenRestApiReturnsDataWithoutSettingItsOwnZone_thenTheRequestedZoneIsUsedInstead() {
+        // A custom CarbonIntensityApi implementation isn't guaranteed to echo the zone back onto the result
+        // the way the bundled CarbonIntensityRestApi/CarbonIntensityJsonParser always does - this must not
+        // crash caching or last-known-value tracking, both of which key on the zone.
+        CarbonIntensityDataFetcher dataFetcher = fetcherWithStalenessThreshold(Duration.ofHours(4));
+        CarbonIntensity zoneless = new CarbonIntensity();
+        zoneless.setStart(zonedPeriod.getStartTime().toInstant());
+        zoneless.setEnd(zonedPeriod.getEndTime().toInstant());
+        zoneless.setResolution(Duration.ofHours(1));
+        zoneless.setData(List.of(BigDecimal.valueOf(42)));
+        when(restApi.getCarbonIntensity(zonedPeriod)).thenReturn(CompletableFuture.completedFuture(zoneless));
+
+        var result = dataFetcher.fetchCarbonIntensity(zonedPeriod);
+
+        assertThat(result.getZone()).isEqualTo("nl");
     }
 
     @Test

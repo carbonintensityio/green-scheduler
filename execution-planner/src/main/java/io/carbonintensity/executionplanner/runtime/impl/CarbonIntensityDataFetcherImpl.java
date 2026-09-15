@@ -102,6 +102,12 @@ public class CarbonIntensityDataFetcherImpl implements CarbonIntensityDataFetche
             return reuseLastKnownOr(zonedPeriod, empty);
         }
 
+        // The zone we asked for is authoritative, regardless of whether a given CarbonIntensityApi
+        // implementation bothers to echo it back onto the result (the bundled CarbonIntensityRestApi always
+        // does, via CarbonIntensityJsonParser, but a custom/test implementation may not) - every downstream
+        // use here (caching, last-known-value tracking) needs a non-null zone to key on.
+        fetched.setZone(zonedPeriod.getZone());
+
         recordLastKnownValue(fetched);
         return storeInCache(fetched);
     }
