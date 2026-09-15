@@ -149,7 +149,9 @@ public final class GreenSchedulerMetricsBinder implements SchedulingMetricsInstr
         return schedule.identity().isEmpty() ? oneBasedIndex + "_" + methodDescription : schedule.identity();
     }
 
-    private static String strategyOf(GreenScheduled schedule) {
+    // Package-private (not private) so GreenSchedulerMetricsBinderStrategyPropertiesTest can exercise the
+    // fixedWindow > successive > cron precedence directly.
+    static String strategyOf(GreenScheduled schedule) {
         if (!schedule.fixedWindow().isEmpty()) {
             return "fixed_window";
         }

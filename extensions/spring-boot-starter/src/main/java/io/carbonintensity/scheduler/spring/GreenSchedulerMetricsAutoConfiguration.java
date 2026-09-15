@@ -19,8 +19,10 @@ import io.micrometer.core.instrument.MeterRegistry;
  * <p>
  * {@link GreenSchedulerAutoConfiguration} never references {@link GreenSchedulerMetricsBinder} or any Micrometer
  * type directly - it only depends on the Micrometer-agnostic
- * {@link io.carbonintensity.scheduler.spring.observability.SchedulingMetricsInstrumenter} interface, resolved to
- * {@code null} via {@code @Autowired(required = false)} when this configuration does not apply.
+ * {@link io.carbonintensity.scheduler.spring.observability.SchedulingMetricsInstrumenter} interface, resolved via an
+ * {@code ObjectProvider} (not a plain {@code @Autowired(required = false)} field - that deadlocks as a circular
+ * dependency, see the field's javadoc in {@link GreenSchedulerAutoConfiguration}) to an empty result when this
+ * configuration does not apply.
  */
 @Configuration
 @ConditionalOnProperty(matchIfMissing = true, prefix = "green-scheduler", name = "enabled", havingValue = "true")

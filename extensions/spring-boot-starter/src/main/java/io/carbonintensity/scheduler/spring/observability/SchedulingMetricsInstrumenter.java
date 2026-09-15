@@ -11,9 +11,10 @@ import io.carbonintensity.scheduler.spring.GreenSchedulerAutoConfiguration;
  * types - Micrometer's, in the only implementation today: {@link GreenSchedulerMetricsBinder}.
  * <p>
  * This keeps Micrometer genuinely optional: if it is absent from the consumer's classpath, no implementation bean
- * exists, {@link GreenSchedulerAutoConfiguration} resolves an {@code @Autowired(required = false)} field of this
- * interface type to {@code null}, and neither it nor the JVM classloader ever needs to resolve a single Micrometer
- * class.
+ * exists, {@link GreenSchedulerAutoConfiguration} resolves an {@code ObjectProvider} of this interface type to an
+ * empty result (a plain {@code @Autowired(required = false)} field would work too when nothing else is going on,
+ * but here it would deadlock as a circular bean dependency - see that field's javadoc), and neither it nor the JVM
+ * classloader ever needs to resolve a single Micrometer class.
  */
 public interface SchedulingMetricsInstrumenter {
 
