@@ -34,6 +34,24 @@
             <scope>provided</scope>
         </dependency>
 
+        <!--
+            Micrometer meter registration (see GreenSchedulerMetricsBinder): optional so that consumers who never
+            add @GreenObserved, or who don't have Micrometer on their classpath, don't pull it in.
+            Unlike the Quarkus extension's own micrometer-core dependency, this one cannot be left unversioned:
+            micronaut-core-bom (imported above) only manages micronaut-core's own modules, not the separate
+            micronaut-micrometer/Micrometer ecosystem, so there is nothing here for Maven to resolve a version
+            from. ${micrometer.version} exists purely so *this reactor* can compile against the Micrometer API -
+            being optional, it is never forced onto a consumer's classpath or version resolution; an application
+            that actually wants these metrics adds its own Micrometer stack (typically micronaut-micrometer) and
+            that version wins for them, same as if this dependency were absent entirely.
+        -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>${micrometer.version}</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -53,6 +71,11 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

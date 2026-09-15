@@ -25,4 +25,14 @@ class CompatibilityJobTest {
                     .anyMatch("compat-check"::equals));
         }
     }
+
+    @Test
+    void greenObservedJobIsRegisteredWithoutAMeterRegistryOnTheClasspath() {
+        try (ApplicationContext context = ApplicationContext.run()) {
+            Scheduler scheduler = context.getBean(Scheduler.class);
+            assertTrue(scheduler.getScheduledJobs().stream()
+                    .map(Trigger::getId)
+                    .anyMatch("compat-observed-check"::equals));
+        }
+    }
 }
