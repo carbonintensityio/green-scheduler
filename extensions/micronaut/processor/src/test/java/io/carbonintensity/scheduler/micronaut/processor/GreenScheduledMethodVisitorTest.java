@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import io.carbonintensity.scheduler.GreenScheduled;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
@@ -210,6 +212,72 @@ class GreenScheduledMethodVisitorTest {
         visitor.visitMethod(method, context);
 
         verify(context, never()).fail(any(), any());
+    }
+
+    @Test
+    void greenObservedWithoutGreenScheduledFailsValidation() {
+        when(method.getAnnotationValuesByType(GreenScheduled.class)).thenReturn(List.of());
+        when(method.findAnnotation(GreenObserved.class)).thenReturn(Optional.of(observed(false)));
+
+        visitor.visitMethod(method, context);
+
+        verify(context).fail(eq("@GreenObserved requires @GreenScheduled to be present on the same method"),
+                eq(method));
+    }
+
+    @Test
+    void greenObservedWithCarbonImpactAndFixedWindowIsValid() {
+        givenValidMethodShape();
+        when(method.getAnnotationValuesByType(GreenScheduled.class))
+                .thenReturn(List.of(schedule("08:00 17:00", null, null, "1h")));
+        when(method.findAnnotation(GreenObserved.class)).thenReturn(Optional.of(observed(true)));
+
+        visitor.visitMethod(method, context);
+
+        verify(context, never()).fail(any(), any());
+    }
+
+    @Test
+    void greenObservedWithCarbonImpactAndCronOnlyFailsValidation() {
+        givenValidMethodShape();
+        when(method.getAnnotationValuesByType(GreenScheduled.class))
+                .thenReturn(List.of(schedule(null, null, "0 0 * * * ?", null)));
+        when(method.findAnnotation(GreenObserved.class)).thenReturn(Optional.of(observed(true)));
+
+        visitor.visitMethod(method, context);
+
+        verify(context).fail(
+                eq("@GreenObserved(carbonImpact = true) requires the @GreenScheduled schedule to use fixedWindow or "
+                        + "successive; a plain cron-only schedule has no carbon-aware baseline to compare savings against"),
+                eq(method));
+    }
+
+    @Test
+    void greenObservedWithoutCarbonImpactAndCronOnlyIsValid() {
+        givenValidMethodShape();
+        when(method.getAnnotationValuesByType(GreenScheduled.class))
+                .thenReturn(List.of(schedule(null, null, "0 0 * * * ?", null)));
+        when(method.findAnnotation(GreenObserved.class)).thenReturn(Optional.of(observed(false)));
+
+        visitor.visitMethod(method, context);
+
+        verify(context, never()).fail(any(), any());
+    }
+
+    @Test
+    void greenObservedWithCarbonImpactAndPlaceholderSkipsValidation() {
+        givenValidMethodShape();
+        when(method.getAnnotationValuesByType(GreenScheduled.class))
+                .thenReturn(List.of(schedule("${green-scheduler.window}", null, null, null)));
+        when(method.findAnnotation(GreenObserved.class)).thenReturn(Optional.of(observed(true)));
+
+        visitor.visitMethod(method, context);
+
+        verify(context, never()).fail(any(), any());
+    }
+
+    private AnnotationValue<GreenObserved> observed(boolean carbonImpact) {
+        return AnnotationValue.builder(GreenObserved.class).member("carbonImpact", carbonImpact).build();
     }
 
     private ParameterElement mockParameterOfType(String typeName) {

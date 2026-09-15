@@ -6,6 +6,7 @@ import jakarta.inject.Singleton;
 
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.ScheduledExecution;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 
 @Singleton
 public class TestJobs {
@@ -29,6 +30,15 @@ public class TestJobs {
     @GreenScheduled(identity = "repeatable-job-1", fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
     @GreenScheduled(identity = "repeatable-job-2", fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
     public void repeatableJob() {
+        // does nothing, scheduling is asserted via the trigger registry
+    }
+
+    // Exercises the @GreenObserved co-presence detection and wiring end to end. No MeterRegistry bean is on this
+    // test application's classpath, so this also proves that scheduling a @GreenObserved job never breaks startup
+    // when Micrometer/GreenSchedulerMetricsBinder is absent.
+    @GreenScheduled(identity = "observed-fixed-window-job", fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL", timeZone = "Europe/Amsterdam")
+    @GreenObserved(carbonImpact = true)
+    public void observedFixedWindowJob() {
         // does nothing, scheduling is asserted via the trigger registry
     }
 }

@@ -50,16 +50,31 @@ class GreenScheduledMicronautTest {
             assertThat(beanDefinition.findMethod("successiveJob", ScheduledExecution.class)).isPresent();
 
             // All business methods are registered with the green scheduler, including both
-            // schedules of the repeatable-annotation job.
+            // schedules of the repeatable-annotation job and the @GreenObserved one. The
+            // carbonImpact-enabled job also causes core's own once-daily carbon-impact batch to be
+            // registered (see SimpleScheduler#ensureCarbonImpactBatchRegistered) - unrelated to this
+            // ticket's scope, but a real side effect of scheduling that job.
             Scheduler scheduler = context.getBean(Scheduler.class);
             assertThat(scheduler.getScheduledJobs())
                     .extracting(Trigger::getId)
                     .containsExactlyInAnyOrder("fixed-window-job", "successive-job", "repeatable-job-1",
-                            "repeatable-job-2");
+                            "repeatable-job-2", "observed-fixed-window-job", "__green-observed-carbon-batch__");
 
             // And the successive job is actually invoked.
             await().atMost(Duration.ofSeconds(15))
                     .untilAsserted(() -> assertThat(TestJobs.SUCCESSIVE_INVOCATIONS.get()).isPositive());
+        }
+    }
+
+    @Test
+    void greenObservedJobIsScheduledEvenWithoutAMeterRegistryBean() {
+        // No Micrometer/MeterRegistry bean is on this test application's classpath, so
+        // GreenSchedulerMetricsBinder is never created - scheduling must still succeed regardless.
+        try (ApplicationContext context = ApplicationContext.run()) {
+            assertThat(context.findBean(GreenSchedulerMetricsBinder.class)).isEmpty();
+
+            Scheduler scheduler = context.getBean(Scheduler.class);
+            assertThat(scheduler.getScheduledJob("observed-fixed-window-job")).isNotNull();
         }
     }
 

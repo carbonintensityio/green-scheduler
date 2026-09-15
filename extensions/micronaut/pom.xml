@@ -21,6 +21,15 @@
         <micronaut.version>4.10.25</micronaut.version>
         <!-- Micronaut 4 requires Java 17 -->
         <maven.compiler.release>17</maven.compiler.release>
+        <!--
+            Only used to compile the optional Micrometer metrics wiring in the runtime module - see the comment on
+            the micrometer-core dependency there for why, unlike the Quarkus extension, this version has to be
+            pinned somewhere in our own reactor. Matches what micronaut-micrometer 5.13.3 (the line that imports
+            micronaut-core-bom:4.10.26, the closest published match to micronaut.version above) itself pins for
+            micrometer-core, so a consumer on that real Micronaut+Micrometer combination sees the exact version
+            this reactor already compiles and tests against.
+        -->
+        <micrometer.version>1.15.12</micrometer.version>
     </properties>
 
     <dependencyManagement>

@@ -1,8 +1,10 @@
 package io.carbonintensity.scheduler.micronaut.processor;
 
 import java.util.List;
+import java.util.Optional;
 
 import io.carbonintensity.scheduler.GreenScheduled;
+import io.carbonintensity.scheduler.observability.GreenObserved;
 import io.micronaut.core.annotation.AnnotationValue;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
@@ -12,6 +14,10 @@ import io.micronaut.inject.visitor.VisitorContext;
 /**
  * Validates {@link GreenScheduled} business methods at build time so that invalid declarations
  * fail the compilation instead of the application startup.
+ * <p>
+ * Also validates the co-presence of {@link GreenObserved} with {@link GreenScheduled}. Core's own
+ * {@code GreenScheduledAnnotationValidation} (invoked by Quarkus's build-time processing) never runs for
+ * Micronaut, so those rules are re-implemented here, independently, at compile time.
  */
 public class GreenScheduledMethodVisitor implements TypeElementVisitor<Object, Object> {
 
@@ -20,6 +26,12 @@ public class GreenScheduledMethodVisitor implements TypeElementVisitor<Object, O
     @Override
     public void visitMethod(MethodElement element, VisitorContext context) {
         List<AnnotationValue<GreenScheduled>> schedules = element.getAnnotationValuesByType(GreenScheduled.class);
+        Optional<AnnotationValue<GreenObserved>> observed = element.findAnnotation(GreenObserved.class);
+        if (observed.isPresent() && schedules.isEmpty()) {
+            // Checked ahead of the early return below since it must fail independently of whether any
+            // @GreenScheduled was found on this method.
+            context.fail("@GreenObserved requires @GreenScheduled to be present on the same method", element);
+        }
         if (schedules.isEmpty()) {
             return;
         }
@@ -40,6 +52,32 @@ public class GreenScheduledMethodVisitor implements TypeElementVisitor<Object, O
         }
         for (AnnotationValue<GreenScheduled> schedule : schedules) {
             validateSchedule(schedule, element, context);
+        }
+        observed.ifPresent(value -> validateCarbonImpactRequiresNonCronOnly(value, schedules, element, context));
+    }
+
+    /**
+     * Mirrors core's {@code GreenScheduledAnnotationValidation.validateGreenObserved}: a schedule with
+     * {@code carbonImpact = true} needs a carbon-aware baseline (fixedWindow or successive) to compare savings
+     * against, so a plain cron-only schedule is rejected.
+     */
+    private void validateCarbonImpactRequiresNonCronOnly(AnnotationValue<GreenObserved> observed,
+            List<AnnotationValue<GreenScheduled>> schedules, MethodElement element, VisitorContext context) {
+        if (!observed.booleanValue("carbonImpact").orElse(false)) {
+            return;
+        }
+        for (AnnotationValue<GreenScheduled> schedule : schedules) {
+            String fixedWindow = schedule.stringValue("fixedWindow").orElse("");
+            String successive = schedule.stringValue("successive").orElse("");
+            if (containsPlaceholder(fixedWindow) || containsPlaceholder(successive)) {
+                // property placeholders are resolved at runtime, nothing to validate at build time
+                continue;
+            }
+            if (fixedWindow.isEmpty() && successive.isEmpty()) {
+                context.fail("@GreenObserved(carbonImpact = true) requires the @GreenScheduled schedule to use "
+                        + "fixedWindow or successive; a plain cron-only schedule has no carbon-aware baseline to "
+                        + "compare savings against", element);
+            }
         }
     }
 
