@@ -244,6 +244,45 @@ running at all (a warning is logged when this happens). This only coordinates jo
 instance - it does not coordinate across multiple instances/replicas of the same application; combine it with
 [ShedLock](#concurrent-executions) if you also run multiple instances.
 
+### Observability (experimental)
+Add `@GreenObserved` next to `@GreenScheduled` to opt a job into observability metrics: fire-time/status data
+(last/next fire time, execution outcome and duration, scheduling drift, ...) is exported for it as soon as the
+annotation is present. `@GreenObserved` is a no-op without a co-located `@GreenScheduled` on the same method - a
+build-time error, not a silent no-op.
+
+```java
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL")
+@GreenObserved
+public void greenFixedWindowJob() {
+    // fire-time/status metrics are now exported for this job
+}
+```
+
+Set `carbonImpact = true` to additionally compute this job's actual carbon impact and its savings versus a
+naive (non-green) baseline, expressed in gCO2eq. This requires a `fixedWindow` or `successive` schedule - a
+plain `cron`-only `@GreenScheduled` has no carbon-aware baseline to compare against, so combining the two fails
+at build time:
+
+```java
+@GreenScheduled(fixedWindow = "08:00 17:00", duration = "1h", carbonIntensityZone = "NL")
+@GreenObserved(carbonImpact = true)
+public void greenFixedWindowJob() {
+    // carbon-impact/savings metrics are now exported for this job too
+}
+```
+
+Carbon-impact figures are computed retrospectively, once per day, for the previous day only - actual intensity
+data for the current day is never trustworthy same-day. **Between the moment a job runs and that daily batch
+processing it, its execution is held only in memory.** If the application restarts in that window, the pending
+execution is lost silently and never contributes to the job's carbon-impact/savings figures - the cumulative
+savings total is therefore a lower bound, not a reconciled ledger. Applications that need this data to survive
+a restart can plug in their own store (see the `CarbonImpactHistoryStore` SPI) instead of relying on the
+in-memory default.
+
+Metrics are only actually exported once a `@GreenObserved`-aware extension is on the classpath; today that's the
+Quarkus extension, with Spring Boot and Micronaut support planned. Without such an extension, `@GreenObserved`
+still validates at build time but has no observable effect at runtime.
+
 ## Acknowledgements
 The maven project structure and all documentation regarding contribution is adapted from
 what the [Quarkus](https://github.com/quarkusio/quarkus) community has created. Further acknowledgements can be found in the [NOTICE](NOTICE) file
