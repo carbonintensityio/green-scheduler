@@ -1,6 +1,9 @@
 package io.carbonintensity.scheduler.quarkus.runtime;
 
 import java.lang.annotation.Annotation;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import jakarta.annotation.PreDestroy;
@@ -27,6 +30,13 @@ public class QuarkusScheduler implements AutoCloseable {
 
     SimpleScheduler greenScheduler;
 
+    /**
+     * The last sampled CPU time (in seconds) of a {@code @GreenObserved} job's most recent run, by job identity -
+     * see {@link CpuTimeSamplingInvoker}. Deliberately not Micrometer-typed: this class must stay loadable whether
+     * or not Micrometer is on the classpath, since it's always registered as a CDI bean.
+     */
+    private final Map<String, Double> lastCpuTimeSecondsByIdentity = new ConcurrentHashMap<>();
+
     public QuarkusScheduler(SchedulerContext context, SimpleScheduler greenScheduler) {
         this.greenScheduler = greenScheduler;
         if (context.getScheduledMethods().isEmpty()) {
@@ -37,10 +47,20 @@ public class QuarkusScheduler implements AutoCloseable {
         // Create triggers and invokers for @GreenScheduled methods
         for (ScheduledMethod method : context.getScheduledMethods()) {
             ScheduledInvoker invoker = context.createInvoker(method.getInvokerClassName());
+            if (method.getGreenObserved().isPresent()) {
+                invoker = new CpuTimeSamplingInvoker(invoker, lastCpuTimeSecondsByIdentity);
+            }
             var schedules = method.getSchedules().stream().map(this::lookupConfiguration).collect(Collectors.toList());
             greenScheduler.scheduleMethod(new ImmutableScheduledMethod(invoker, method.getDeclaringClassName(),
                     method.getMethodName(), schedules, method.getGreenObserved().orElse(null)));
         }
+    }
+
+    /**
+     * @return an immutable, live view of {@link #lastCpuTimeSecondsByIdentity}
+     */
+    public Map<String, Double> getLastCpuTimeSeconds() {
+        return Collections.unmodifiableMap(lastCpuTimeSecondsByIdentity);
     }
 
     @PreDestroy

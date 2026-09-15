@@ -58,4 +58,22 @@ public interface GreenSchedulerProperties {
      * CarbonIntensity API url.
      */
     Optional<String> apiUrl();
+
+    /**
+     * Observability metrics configuration - see
+     * {@code io.carbonintensity.scheduler.observability.GreenObserved}. Only relevant when Micrometer is on the
+     * classpath (e.g. via {@code quarkus-micrometer}); otherwise no metrics are exported and these settings have no
+     * effect.
+     */
+    MetricsConfig metrics();
+
+    interface MetricsConfig {
+
+        /**
+         * Whether the {@code execution} and {@code drift} Timers publish a percentile histogram. Default false: the
+         * cardinality of {@code identity x strategy x outcome} is unpredictable for an embedded library, so this is
+         * opt-in rather than on by default.
+         */
+        Optional<Boolean> publishPercentileHistograms();
+    }
 }

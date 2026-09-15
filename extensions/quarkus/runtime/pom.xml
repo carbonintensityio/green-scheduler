@@ -33,6 +33,31 @@
             <version>${quarkus.version}</version>
             <optional>true</optional>
         </dependency>
+
+        <!--
+        Micrometer meter registration (see io.carbonintensity.scheduler.quarkus.runtime.metrics): optional so that
+        consumers who never add @GreenObserved, or who don't have quarkus-micrometer on their classpath, don't pull
+        it in. No version is pinned here on purpose - it resolves from whichever Quarkus BOM the consumer's own
+        application imports, the same as quarkus-micrometer's own micrometer-core dependency does, so it can never
+        drift out of sync with the rest of their Micrometer stack.
+        -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
