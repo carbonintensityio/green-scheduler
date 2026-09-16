@@ -206,7 +206,11 @@ public void greenSuccessiveWindowJob() {
 Visit the [carbonintensity.io](https://carbonintensity.io) homepage to get an API key for the scheduler.
 
 ### Supported zones
-The current supported list can be found soon on [carbonintensity.io](https://carbonintensity.io).
+The current supported list can be found on the [Supported Zones](https://carbonintensity.io/supported-zones) page.
+
+Running on AWS, Azure or GCP and not sure which `carbonIntensityZone` your region maps to? See
+[EU Cloud Region Mapping](https://carbonintensity.io/cloud-region-mapping) to look it up from
+your cloud provider's region code.
 
 ### Concurrent executions
 The scheduler may start a process multiple times when multiple instances of the same application are running 
