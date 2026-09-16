@@ -17,6 +17,38 @@
     <build>
         <plugins>
             <plugin>
+                <!-- Mutation testing. Local/manual only - not bound to any lifecycle phase, so
+                     "mvn verify" never triggers it and it is not a CI gate. Run explicitly:
+                       mvn initialize org.pitest:pitest-maven:mutationCoverage -pl core
+                     Scoped to the runtime/annotation-parsing packages (AbstractJobDefinition,
+                     SkipConcurrentExecutionInvoker, the *ExpressionParser/AnnotationParser
+                     classes) rather than the whole module, since mutation testing is slow. -->
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${pitest-maven.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${pitest-junit5-plugin.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <param>io.carbonintensity.scheduler.runtime.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <!-- Broader than targetClasses on purpose: the tests that actually exercise
+                             e.g. AbstractJobDefinition/SkipConcurrentExecutionInvoker live one
+                             package up (io.carbonintensity.scheduler.TestFixedWindowScheduler and
+                             friends), not under .runtime.* itself - scoping targetTests as narrowly
+                             as targetClasses silently excluded them and made coverage look near-0%. -->
+                        <param>io.carbonintensity.scheduler.*</param>
+                    </targetTests>
+                    <timestampedReports>false</timestampedReports>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>

@@ -88,14 +88,22 @@ public class Timeslot {
             } else {
                 secsInCiPeriod = Duration.between(start.toInstant(), ciEnd).getSeconds();
             }
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            // Multiply before dividing, and with an explicit scale (CIIO-341): dividing first with
+            // no explicit scale rounds to the *dividend's* scale (0 for a typical integer-valued
+            // reading), silently truncating any per-second rate below 1 to zero before the
+            // multiply ever runs - which a partial overlap almost always is.
+            return ci.value().multiply(BigDecimal.valueOf(secsInCiPeriod))
+                    .divide(BigDecimal.valueOf(ci.resolution().getSeconds()), 10, RoundingMode.HALF_EVEN);
         }
         //job ends in or on ci window, but does not start in it
         if (end.toInstant().compareTo(ciStart) >= 0 && end.toInstant().compareTo(ciEnd) <= 0) {
             long secsInCiPeriod = Duration.between(ciStart, end.toInstant()).getSeconds();
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            // Multiply before dividing, and with an explicit scale (CIIO-341): dividing first with
+            // no explicit scale rounds to the *dividend's* scale (0 for a typical integer-valued
+            // reading), silently truncating any per-second rate below 1 to zero before the
+            // multiply ever runs - which a partial overlap almost always is.
+            return ci.value().multiply(BigDecimal.valueOf(secsInCiPeriod))
+                    .divide(BigDecimal.valueOf(ci.resolution().getSeconds()), 10, RoundingMode.HALF_EVEN);
         }
 
         return BigDecimal.ZERO;

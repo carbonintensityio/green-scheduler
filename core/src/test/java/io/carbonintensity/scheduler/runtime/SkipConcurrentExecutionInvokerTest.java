@@ -55,6 +55,8 @@ class SkipConcurrentExecutionInvokerTest {
 
         assertThat(delegate.invocationCount()).isEqualTo(1);
         assertThat(skipCount.get()).isEqualTo(1);
+        // Kills the "replaced return value with null" mutant on the skip path: the returned stage must
+        // actually be a completed one (so a caller doesn't wait on it forever), not merely non-null.
         assertThat(skipped.toCompletableFuture()).isCompletedWithValue(null);
     }
 
@@ -90,11 +92,16 @@ class SkipConcurrentExecutionInvokerTest {
         SkipConcurrentExecutionInvoker invoker = new SkipConcurrentExecutionInvoker(delegate, events);
         ScheduledExecution execution = new FixedExecution();
 
-        invoker.invoke(execution);
+        CompletionStage<Void> forwarded = invoker.invoke(execution);
         invoker.invoke(execution); // skipped while pending
         assertThat(delegate.invocationCount()).isEqualTo(1);
 
         delegate.mostRecentFuture().complete(null);
+
+        // Kills the "replaced return value with null" mutant on the success path: a caller awaiting the
+        // forwarded call's stage must actually see it complete with the delegate's result, not receive a
+        // stage that was stubbed out independently of the delegate's own completion.
+        assertThat(forwarded.toCompletableFuture()).isCompletedWithValue(null);
 
         invoker.invoke(execution);
         assertThat(delegate.invocationCount()).isEqualTo(2);

@@ -727,7 +727,7 @@ public class SimpleScheduler implements Scheduler, AutoCloseable {
         }
 
         public boolean isOverdue() {
-            ZonedDateTime now = ZonedDateTime.now();
+            ZonedDateTime now = ZonedDateTime.now(this.clock);
             if (now.isBefore(this.start)) {
                 return false;
             } else {

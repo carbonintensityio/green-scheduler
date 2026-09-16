@@ -53,6 +53,10 @@
         <maven-enforcer-plugin.phase>validate</maven-enforcer-plugin.phase>
         <owasp-dependency-check-plugin.version>12.2.2</owasp-dependency-check-plugin.version>
         <jacoco.version>0.8.15</jacoco.version>
+        <!-- Pinned explicitly (not left to whatever's cached) - see the pitest-maven plugin
+             config in core/pom.xml and execution-planner/pom.xml for why. -->
+        <pitest-maven.version>1.30.0</pitest-maven.version>
+        <pitest-junit5-plugin.version>1.2.3</pitest-junit5-plugin.version>
     </properties>
 
     <modules>
