@@ -195,3 +195,36 @@ mistakable for one. `DisabledDummyCarbonIntensityApi` itself (still used by `Tes
 `TestDefaultCarbonIntensityProgrammatic`, which only need "no data at all", not specific values) now returns a
 properly failed `CompletableFuture` instead of `null`, since `null` was only ever safe under the old
 fallback-swapping constructor.
+
+## Addendum: the full timing picture (added after a week of pilot observation)
+
+This decision introduces or touches six independent timing constants across the scheduler and this mechanism.
+They solve six different problems and were designed one at a time in the sections above; this table exists so a
+future reader (or a future incident) doesn't mistake one for a duplicate of another, or "fix" one by squinting at
+a symptom that actually belongs to a different one:
+
+| # | Mechanism | Value | Problem it solves |
+|---|---|---|---|
+| 1 | `SimpleScheduler.CHECK_PERIOD` | 1 second | The scheduler's own tick - how often any job's trigger gets (re-)evaluated at all. Predates this ADR entirely; nothing carbon-specific about it. |
+| 2 | `CarbonIntensityCache` (period-keyed), positive hit | until `value.getEnd()` | The original "fetch from ENTSO-E about once an hour" behaviour - the cache key truncates to the hour, so a real HTTP call happens at most once per hour per zone actually queried. Untouched by this ADR. |
+| 3 | `CarbonIntensityCache`, negative ("no data") hit | `DEFAULT_TTL_EMPTY_VALUES` = 1 hour | "If we got nothing, try again in an hour" - a separate, deliberately conservative TTL for the empty case specifically. |
+| 4 | `CarbonIntensityRestApi` retry (critical path, synchronous) | `retryMaxAttempts`=3, 300ms/900ms backoff, hard `retryBudget`=2s | How long a scheduler tick may block on a network hiccup, bounded because `checkTriggers()` iterates serially on a shared 2-thread pool. |
+| 5 | `LastKnownIntensityCache` staleness | `stalenessThreshold` = 4h | How old a real, previously-fetched value may be and still count as an honest carbon-aware decision. |
+| 6 | `BackgroundCarbonIntensityRefresher` (async, off critical path) | poll every 30s, up to 20 attempts (~10 minutes total) | How persistently the off-critical-path recovery poller tries before giving up, so mechanism 3's one-hour negative TTL doesn't let a short outage degrade scheduling for longer than necessary. |
+
+Row 6 is the only one of the six with an internal, non-configurable constant instead of a five-knob-pattern
+config field (see "Configuration" above) - it was sized against no real-world data at design time. Two
+independent, unrelated outages during the pilot's first week exceeded its ~10-minute budget before the
+background poller could observe recovery on its own (instead, recovery only happened once some later,
+unrelated foreground fetch happened to succeed):
+
+- A recurring day-rollover gap (~40 minutes, three zones simultaneously) around local midnight, where the
+  upstream API had not yet published the new day's data - each foreground call failed with a real `404`, not a
+  timeout, correctly not retried on the critical path (see decision 1), but the background poller gave up around
+  the 10-minute mark, well before the data appeared.
+- A ~20-minute run of `ConnectException: Network is unreachable` correlated with the laptop entering
+  `DarkWake`/clamshell sleep (`powerd` logs), the same root cause that originally motivated this whole ADR.
+
+Whether/how to widen row 6's budget is a separate, still-open decision from this addendum - documenting the map
+was the prerequisite for making that call deliberately rather than as a one-off patch reacting to whichever of
+the six knobs happened to be involved in the most recent incident.
