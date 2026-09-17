@@ -83,6 +83,23 @@ public class CarbonIntensityPeriod implements Comparable<CarbonIntensityPeriod> 
         return point.compareTo(instant) >= 0 && point.isBefore(instant.plus(resolution));
     }
 
+    /**
+     * Whether this period genuinely overlaps the half-open candidate interval {@code [candidateStart,
+     * candidateEnd)} - i.e. the two intervals share more than a single, zero-duration boundary instant.
+     * <p>
+     * This is deliberately <em>not</em> {@code contains(candidateStart) || contains(candidateEnd)}: that
+     * check reports a "hit" whenever the candidate merely <em>touches</em> this period at its exclusive
+     * upper bound - e.g. a candidate ending exactly where this period starts ({@code candidateEnd ==
+     * moment()}) - even though the actual overlap is zero seconds. See CIIO-475: {@link Timeslot} used to
+     * treat such a touch as "real data found, value zero", which is indistinguishable from a genuine
+     * zero-intensity reading. Two half-open intervals {@code [a1,a2)} and {@code [b1,b2)} overlap iff
+     * {@code a1 < b2 && b1 < a2}; this method applies exactly that test with this period as {@code [b1,b2)}.
+     */
+    public boolean overlaps(Instant candidateStart, Instant candidateEnd) {
+        Instant periodEnd = instant.plus(resolution);
+        return candidateStart.isBefore(periodEnd) && instant.isBefore(candidateEnd);
+    }
+
     @Override
     public String toString() {
         return "CarbonIntensityMoment{" +

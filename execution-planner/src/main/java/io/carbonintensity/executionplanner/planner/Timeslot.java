@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 
@@ -17,6 +18,10 @@ import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 public class Timeslot {
     ZonedDateTime start;
     ZonedDateTime end;
+    /**
+     * {@code null} when no {@link CarbonIntensityPeriod} genuinely overlapped this slot - a data gap, not a
+     * zero reading. See {@link CarbonIntensityPeriod#overlaps} for why that distinction matters (CIIO-475).
+     */
     BigDecimal carbonIntensity;
 
     public Timeslot(ZonedDateTime start, ZonedDateTime end, BigDecimal carbonIntensity) {
@@ -33,6 +38,10 @@ public class Timeslot {
         return end;
     }
 
+    /**
+     * @return the carbon-intensity value for this slot, or {@code null} for a data gap - see
+     *         {@link #carbonIntensity the field javadoc}
+     */
     public BigDecimal carbonIntensity() {
         return carbonIntensity;
     }
@@ -57,19 +66,27 @@ public class Timeslot {
 
         while (!s.isAfter(we)) { // allow equal for 0 windows
             ZonedDateTime e = s.plus(timeslotDuration);
-            timeslots.add(new Timeslot(s, e, calculateCarbonIntensity(periods, s, e)));
+            timeslots.add(new Timeslot(s, e, calculateCarbonIntensity(periods, s, e).orElse(null)));
             s = s.plus(resolution);
         }
         return timeslots;
     }
 
-    public static BigDecimal calculateCarbonIntensity(List<CarbonIntensityPeriod> carbonIntensityInstants, ZonedDateTime start,
-            ZonedDateTime end) {
-        // find carbon intensities.
+    /**
+     * @return the summed carbon-intensity contribution of every {@link CarbonIntensityPeriod} genuinely
+     *         overlapping {@code [start, end)}, or {@link Optional#empty()} if none did - distinguishing a
+     *         real data gap from an actual zero, which {@link BigDecimal#ZERO} as a reduce identity could not
+     *         (CIIO-475). Periods are selected via {@link CarbonIntensityPeriod#overlaps} - see its Javadoc
+     *         for why that isn't just {@code contains(start) || contains(end)}.
+     */
+    public static Optional<BigDecimal> calculateCarbonIntensity(List<CarbonIntensityPeriod> carbonIntensityInstants,
+            ZonedDateTime start, ZonedDateTime end) {
+        Instant startInstant = start.toInstant();
+        Instant endInstant = end.toInstant();
         return carbonIntensityInstants.stream()
-                .filter(m -> m.contains(start.toInstant()) || m.contains(end.toInstant()))
+                .filter(ci -> ci.overlaps(startInstant, endInstant))
                 .map(ci -> calculateCarbonIntensity(start, end, ci))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal::add);
     }
 
     private static BigDecimal calculateCarbonIntensity(ZonedDateTime start, ZonedDateTime end, CarbonIntensityPeriod ci) {
