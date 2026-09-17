@@ -53,7 +53,8 @@ class GreenSchedulerConfigurationPropertiesTest {
                 Map.entry("green-scheduler.carbon-intensity-retry-initial-backoff", "PT0.5S"),
                 Map.entry("green-scheduler.carbon-intensity-retry-backoff-multiplier", 2.5),
                 Map.entry("green-scheduler.carbon-intensity-retry-budget", "PT3S"),
-                Map.entry("green-scheduler.carbon-intensity-staleness-threshold", "PT6H"));
+                Map.entry("green-scheduler.carbon-intensity-staleness-threshold", "PT6H"),
+                Map.entry("green-scheduler.carbon-intensity-recovery-budget", "PT15M"));
 
         try (ApplicationContext context = ApplicationContext.run(customProperties)) {
             GreenSchedulerConfigurationProperties properties = context
@@ -70,6 +71,7 @@ class GreenSchedulerConfigurationPropertiesTest {
             assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).isEqualTo(2.5);
             assertThat(properties.getCarbonIntensityRetryBudget()).isEqualTo(Duration.ofSeconds(3));
             assertThat(properties.getCarbonIntensityStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+            assertThat(properties.getCarbonIntensityRecoveryBudget()).isEqualTo(Duration.ofMinutes(15));
 
             SchedulerConfig config = context.getBean(SchedulerConfig.class);
             assertThat(config.getStartMode()).isEqualTo(SchedulerConfig.StartMode.HALTED);

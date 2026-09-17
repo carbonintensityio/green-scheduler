@@ -100,17 +100,28 @@ calls always agree).
 
 ### 4. An asynchronous background recovery poller, off the critical path
 
-`BackgroundCarbonIntensityRefresher` starts polling a zone (every 30s, up to 20 attempts) the moment a foreground
-fetch for that zone fails, and stops as soon as either it succeeds (refreshing `LastKnownIntensityCache`) or it
-exhausts its attempt budget (a further foreground failure restarts it). It runs on its own single daemon-thread
-executor and never blocks a trigger evaluation.
+`BackgroundCarbonIntensityRefresher` starts polling a zone (every 30s, internal and not configurable - see below)
+the moment a foreground fetch for that zone fails, and stops as soon as either it succeeds (refreshing
+`LastKnownIntensityCache`) or it exhausts a total wall-clock `recoveryBudget` (default 10 minutes, a further
+foreground failure restarts it). It runs on its own single daemon-thread executor and never blocks a trigger
+evaluation.
 
-These two numbers are deliberately internal constants, not surfaced as configuration like the five knobs in the
-table below: they tune a safety-net recovery cadence that runs off the critical path and has no user-visible
-scheduling effect (unlike the retry budget, which directly bounds how long a trigger evaluation can block, or the
-staleness threshold, which directly decides whether a job gets a carbon-aware slot). A deployment that wants faster
-recovery has no lever to pull here today; if that turns out to matter in practice, extending the same five-knob
-pattern to these two constants is the natural next step, not a redesign.
+**Update (post-pilot):** the total attempt budget for this poller was originally a second internal constant
+(`DEFAULT_MAX_ATTEMPTS = 20`, alongside the 30s poll interval, together ~10 minutes) rather than configuration
+like the five knobs above - sized against no real-world data at design time. Two independent pilot incidents (see
+the addendum below) exceeded that fixed budget before the poller could observe recovery on its own, so this
+attempt count was replaced with a sixth configurable knob, `carbonIntensityRecoveryBudget`: a single `Duration`
+expressing the *total wall-clock time* the poller may keep trying, not a raw attempt count. `CarbonIntensityDataFetcherImpl`
+converts it into an attempt count against the still-internal, still-fixed 30s poll interval via
+`Math.max(1, recoveryBudget.dividedBy(pollInterval))` - always at least one attempt, even for a budget shorter than
+a single poll interval - and passes both to `BackgroundCarbonIntensityRefresher`'s existing 5-arg constructor. The
+poll interval itself remains an internal, non-configurable constant: unlike the retry budget (which directly bounds
+how long a *trigger evaluation* can block) or the staleness threshold (which directly decides whether a job gets a
+carbon-aware slot), the poll interval has no user-visible scheduling effect of its own to tune - only the *total*
+time the safety net keeps trying is operationally meaningful, exactly the same reasoning that already applies to
+`retryBudget` overriding `retryMaxAttempts` above. Exposing the poll interval itself, if that ever becomes
+necessary, is a separate, still-open decision - see the note at the end of the addendum below about the
+upstream-load guarantee that depends on it staying internal.
 
 This exists because of `CarbonIntensityCache`'s existing one-hour negative-result TTL (`DEFAULT_TTL_EMPTY_VALUES`,
 "when we get no data, we retry in one hour"): without an independent recovery path, a real outage of only a few
@@ -145,16 +156,20 @@ depends on that branch continuing to construct `CarbonIntensityRestApi` directly
 
 ### Configuration
 
-All five numeric/duration knobs above (except the two internal background-poller constants) are configurable,
-following the exact existing `apiKey`/`apiUrl` pattern: each extension's `GreenSchedulerProperties`/
+All six numeric/duration knobs above (except the background poller's internal, fixed 30s poll interval) are
+configurable, following the exact existing `apiKey`/`apiUrl` pattern: each extension's `GreenSchedulerProperties`/
 `GreenSchedulerConfigurationProperties` to `SchedulerConfigBuilder`/`GreenSchedulerFactory` to
 `CarbonIntensityApiConfig.Builder` (execution-planner). Every field defaults to `null` at the properties/builder
 level (mirroring `apiKey`, not `apiUrl`'s hardcoded default) and `CarbonIntensityApiConfig` alone owns the actual
 default values (`DEFAULT_RETRY_MAX_ATTEMPTS = 3`, `DEFAULT_RETRY_INITIAL_BACKOFF = 300ms`,
-`DEFAULT_RETRY_BACKOFF_MULTIPLIER = 3.0`, `DEFAULT_RETRY_BUDGET = 2s`, `DEFAULT_STALENESS_THRESHOLD = 4h`) - this
-keeps a single source of truth rather than duplicating the five literal defaults across `core` and three
-extensions. This is not because deployments are expected to want different values in practice, but so a
-deployment *can* tune them from outside without a code change.
+`DEFAULT_RETRY_BACKOFF_MULTIPLIER = 3.0`, `DEFAULT_RETRY_BUDGET = 2s`, `DEFAULT_STALENESS_THRESHOLD = 4h`,
+`DEFAULT_RECOVERY_BUDGET = 10m`) - this keeps a single source of truth rather than duplicating the six literal
+defaults across `core` and three extensions. This is not because deployments are expected to want different values
+in practice, but so a deployment *can* tune them from outside without a code change. Unlike the other five,
+`recoveryBudget` additionally enforces a genuine lower bound (it must be positive) rather than only `notNull`, at
+both `CarbonIntensityApiConfig.Builder` and each extension's `SchedulerConfigBuilder`/`GreenSchedulerFactory`
+level - a zero or negative budget would be a configuration mistake worth failing fast on, rather than silently
+falling through to the `Math.max(1, ...)` attempt-count floor described above.
 
 ## Deviations from the original spec
 
@@ -210,13 +225,13 @@ a symptom that actually belongs to a different one:
 | 3 | `CarbonIntensityCache`, negative ("no data") hit | `DEFAULT_TTL_EMPTY_VALUES` = 1 hour | "If we got nothing, try again in an hour" - a separate, deliberately conservative TTL for the empty case specifically. |
 | 4 | `CarbonIntensityRestApi` retry (critical path, synchronous) | `retryMaxAttempts`=3, 300ms/900ms backoff, hard `retryBudget`=2s | How long a scheduler tick may block on a network hiccup, bounded because `checkTriggers()` iterates serially on a shared 2-thread pool. |
 | 5 | `LastKnownIntensityCache` staleness | `stalenessThreshold` = 4h | How old a real, previously-fetched value may be and still count as an honest carbon-aware decision. |
-| 6 | `BackgroundCarbonIntensityRefresher` (async, off critical path) | poll every 30s, up to 20 attempts (~10 minutes total) | How persistently the off-critical-path recovery poller tries before giving up, so mechanism 3's one-hour negative TTL doesn't let a short outage degrade scheduling for longer than necessary. |
+| 6 | `BackgroundCarbonIntensityRefresher` (async, off critical path) | poll every 30s (internal, fixed), budget configurable via `carbonIntensityRecoveryBudget`, default ~10 min | How persistently the off-critical-path recovery poller tries before giving up, so mechanism 3's one-hour negative TTL doesn't let a short outage degrade scheduling for longer than necessary. |
 
-Row 6 is the only one of the six with an internal, non-configurable constant instead of a five-knob-pattern
-config field (see "Configuration" above) - it was sized against no real-world data at design time. Two
-independent, unrelated outages during the pilot's first week exceeded its ~10-minute budget before the
-background poller could observe recovery on its own (instead, recovery only happened once some later,
-unrelated foreground fetch happened to succeed):
+Row 6 was originally the only one of the six with an internal, non-configurable constant instead of a
+five-knob-pattern config field (see "Configuration" above) - its ~10-minute total budget was sized against no
+real-world data at design time. Two independent, unrelated outages during the pilot's first week exceeded that
+fixed budget before the background poller could observe recovery on its own (instead, recovery only happened once
+some later, unrelated foreground fetch happened to succeed):
 
 - A recurring day-rollover gap (~40 minutes, three zones simultaneously) around local midnight, where the
   upstream API had not yet published the new day's data - each foreground call failed with a real `404`, not a
@@ -225,6 +240,10 @@ unrelated foreground fetch happened to succeed):
 - A ~20-minute run of `ConnectException: Network is unreachable` correlated with the laptop entering
   `DarkWake`/clamshell sleep (`powerd` logs), the same root cause that originally motivated this whole ADR.
 
-Whether/how to widen row 6's budget is a separate, still-open decision from this addendum - documenting the map
-was the prerequisite for making that call deliberately rather than as a one-off patch reacting to whichever of
-the six knobs happened to be involved in the most recent incident.
+As a result, row 6's *budget* is now a sixth configurable knob, `carbonIntensityRecoveryBudget` (see
+"Configuration" above and the "Update (post-pilot)" note in decision 4) - it is no longer "fully internal". Its
+30s poll interval, however, deliberately remains internal and fixed: this mechanism's guarantee of no effect on
+shared upstream load (at most one recovery request roughly every 30s per zone being recovered, regardless of how
+large the configured budget is) depends specifically on the poll interval, not the budget, and was only ever
+computed against a fixed 30s value. A later change that also makes the poll interval itself configurable must
+re-derive and re-check that upstream-load guarantee - it does not automatically carry over.

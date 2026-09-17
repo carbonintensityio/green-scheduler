@@ -56,7 +56,21 @@ public class CarbonIntensityDataFetcherImpl implements CarbonIntensityDataFetche
             logger.warn("Rest API not configured. No live carbon intensity data can be fetched; scheduling will use "
                     + "the configured fallback (fixed-window cron midpoint / plain interval) until it is.");
         }
-        this.backgroundRefresher = new BackgroundCarbonIntensityRefresher(restApi, lastKnown, clock);
+        Duration pollInterval = BackgroundCarbonIntensityRefresher.DEFAULT_POLL_INTERVAL;
+        int maxAttempts = deriveMaxAttempts(config.getRecoveryBudget(), pollInterval);
+        this.backgroundRefresher = new BackgroundCarbonIntensityRefresher(restApi, lastKnown, clock, pollInterval, maxAttempts);
+    }
+
+    /**
+     * Converts the configurable, wall-clock {@code recoveryBudget} into the attempt count the background
+     * poller actually schedules on, given its fixed, internal {@code pollInterval}. Always at least 1, even
+     * for a budget shorter than a single poll interval, and clamped to {@link Integer#MAX_VALUE} so an
+     * excessively large budget cannot silently overflow the {@code long}-to-{@code int} narrowing into a
+     * near-zero or negative attempt count.
+     */
+    static int deriveMaxAttempts(Duration recoveryBudget, Duration pollInterval) {
+        long attempts = Math.max(1L, recoveryBudget.dividedBy(pollInterval));
+        return (int) Math.min(attempts, Integer.MAX_VALUE);
     }
 
     /**

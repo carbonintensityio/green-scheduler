@@ -46,6 +46,7 @@ public class GreenSchedulerFactory {
                     .retryBackoffMultiplier(properties.getCarbonIntensityRetryBackoffMultiplier())
                     .retryBudget(properties.getCarbonIntensityRetryBudget())
                     .stalenessThreshold(properties.getCarbonIntensityStalenessThreshold())
+                    .recoveryBudget(properties.getCarbonIntensityRecoveryBudget())
                     .build());
         }
         return config;

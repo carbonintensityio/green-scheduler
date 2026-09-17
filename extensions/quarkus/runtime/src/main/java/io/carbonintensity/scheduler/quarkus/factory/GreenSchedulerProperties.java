@@ -88,4 +88,12 @@ public interface GreenSchedulerProperties {
      * carbon-aware decision when the live API is unreachable. Default 4 hours.
      */
     Optional<Duration> carbonIntensityStalenessThreshold();
+
+    /**
+     * Total wall-clock time the asynchronous, off-critical-path background recovery poller may keep
+     * retrying a zone whose live fetch failed, before giving up until the next foreground failure
+     * retriggers it. The poller's own poll interval (30 seconds) is an internal, non-configurable
+     * constant - only this total budget can be tuned. Default 10 minutes.
+     */
+    Optional<Duration> carbonIntensityRecoveryBudget();
 }

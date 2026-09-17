@@ -23,6 +23,13 @@ public class CarbonIntensityApiConfig {
     public static final Duration DEFAULT_RETRY_BUDGET = Duration.ofSeconds(2);
     /** How old a last-known-good value may be and still count as a genuine carbon-aware decision. */
     public static final Duration DEFAULT_STALENESS_THRESHOLD = Duration.ofHours(4);
+    /**
+     * Total wall-clock time {@link io.carbonintensity.executionplanner.runtime.impl.BackgroundCarbonIntensityRefresher}
+     * may keep polling a failed zone before giving up, until a subsequent foreground failure restarts it.
+     * Matches the previous hardcoded behaviour exactly (30s poll interval * 20 attempts = 10 minutes); the
+     * poll interval itself stays an internal constant, see that class.
+     */
+    public static final Duration DEFAULT_RECOVERY_BUDGET = Duration.ofMinutes(10);
 
     private final String apiKey;
     private final String apiUrl;
@@ -32,6 +39,7 @@ public class CarbonIntensityApiConfig {
     private final double retryBackoffMultiplier;
     private final Duration retryBudget;
     private final Duration stalenessThreshold;
+    private final Duration recoveryBudget;
 
     protected CarbonIntensityApiConfig(Builder builder) {
         this.apiKey = builder.apiKey;
@@ -46,6 +54,7 @@ public class CarbonIntensityApiConfig {
         this.retryBudget = builder.retryBudget != null ? builder.retryBudget : DEFAULT_RETRY_BUDGET;
         this.stalenessThreshold = builder.stalenessThreshold != null ? builder.stalenessThreshold
                 : DEFAULT_STALENESS_THRESHOLD;
+        this.recoveryBudget = builder.recoveryBudget != null ? builder.recoveryBudget : DEFAULT_RECOVERY_BUDGET;
     }
 
     public String getApiKey() {
@@ -88,6 +97,15 @@ public class CarbonIntensityApiConfig {
         return stalenessThreshold;
     }
 
+    /**
+     * Total wall-clock time the background recovery poller may keep retrying a failed zone before giving
+     * up. The poller's own poll interval (30s) stays an internal, non-configurable constant - only this
+     * total budget is configurable.
+     */
+    public Duration getRecoveryBudget() {
+        return recoveryBudget;
+    }
+
     public static class Builder {
         private String apiKey;
         private String apiUrl;
@@ -96,6 +114,7 @@ public class CarbonIntensityApiConfig {
         private Double retryBackoffMultiplier;
         private Duration retryBudget;
         private Duration stalenessThreshold;
+        private Duration recoveryBudget;
 
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -136,6 +155,18 @@ public class CarbonIntensityApiConfig {
 
         public Builder stalenessThreshold(Duration stalenessThreshold) {
             this.stalenessThreshold = stalenessThreshold;
+            return this;
+        }
+
+        /**
+         * Sets the total wall-clock recovery budget. Must be positive: a zero or negative budget would leave
+         * the background poller with no time to ever attempt a recovery.
+         */
+        public Builder recoveryBudget(Duration recoveryBudget) {
+            if (recoveryBudget != null && (recoveryBudget.isZero() || recoveryBudget.isNegative())) {
+                throw new IllegalArgumentException("recoveryBudget must be positive, was " + recoveryBudget);
+            }
+            this.recoveryBudget = recoveryBudget;
             return this;
         }
 

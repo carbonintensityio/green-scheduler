@@ -27,13 +27,14 @@ class GreenScheduledPropertiesTests {
         assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).isNotPresent();
         assertThat(properties.getCarbonIntensityRetryBudget()).isNotPresent();
         assertThat(properties.getCarbonIntensityStalenessThreshold()).isNotPresent();
+        assertThat(properties.getCarbonIntensityRecoveryBudget()).isNotPresent();
     }
 
     @Test
     void whenOverridingDefaultValues_thenSetOverriddenValues() {
         GreenSchedulerProperties properties = new GreenSchedulerProperties(true, SchedulerConfig.StartMode.HALTED, 1, 2,
                 Duration.ofSeconds(1), Duration.ofSeconds(2), "apiKey", "apiUrl", 5, Duration.ofMillis(500), 2.5,
-                Duration.ofSeconds(3), Duration.ofHours(6));
+                Duration.ofSeconds(3), Duration.ofHours(6), Duration.ofMinutes(15));
 
         assertThat(properties.getEnabled()).hasValue(true);
         assertThat(properties.getJobExecutors()).hasValue(1);
@@ -47,6 +48,7 @@ class GreenScheduledPropertiesTests {
         assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).hasValue(2.5);
         assertThat(properties.getCarbonIntensityRetryBudget()).hasValue(Duration.ofSeconds(3));
         assertThat(properties.getCarbonIntensityStalenessThreshold()).hasValue(Duration.ofHours(6));
+        assertThat(properties.getCarbonIntensityRecoveryBudget()).hasValue(Duration.ofMinutes(15));
     }
 
 }

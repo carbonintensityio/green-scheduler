@@ -38,5 +38,6 @@ public class QuarkusCarbonIntensityRetryConfigTest {
         assertEquals(2.5, config.getRetryBackoffMultiplier());
         assertEquals(Duration.ofSeconds(3), config.getRetryBudget());
         assertEquals(Duration.ofHours(6), config.getStalenessThreshold());
+        assertEquals(Duration.ofMinutes(15), config.getRecoveryBudget());
     }
 }

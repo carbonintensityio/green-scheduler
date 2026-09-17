@@ -59,6 +59,7 @@ class GreenSchedulerFactoryTest {
         properties.setCarbonIntensityRetryBackoffMultiplier(2.5);
         properties.setCarbonIntensityRetryBudget(Duration.ofSeconds(3));
         properties.setCarbonIntensityStalenessThreshold(Duration.ofHours(6));
+        properties.setCarbonIntensityRecoveryBudget(Duration.ofMinutes(15));
 
         SchedulerConfig config = factory.schedulerConfig(properties, null);
 
@@ -68,6 +69,7 @@ class GreenSchedulerFactoryTest {
         assertThat(apiConfig.getRetryBackoffMultiplier()).isEqualTo(2.5);
         assertThat(apiConfig.getRetryBudget()).isEqualTo(Duration.ofSeconds(3));
         assertThat(apiConfig.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+        assertThat(apiConfig.getRecoveryBudget()).isEqualTo(Duration.ofMinutes(15));
     }
 
     @Test
@@ -81,6 +83,7 @@ class GreenSchedulerFactoryTest {
         var apiConfig = config.getCarbonIntensityApiConfig();
         assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_MAX_ATTEMPTS);
         assertThat(apiConfig.getStalenessThreshold()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_STALENESS_THRESHOLD);
+        assertThat(apiConfig.getRecoveryBudget()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RECOVERY_BUDGET);
     }
 
     @Test

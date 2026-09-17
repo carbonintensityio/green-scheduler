@@ -28,6 +28,7 @@ public class SchedulerConfigBuilder {
     private Double retryBackoffMultiplier;
     private Duration retryBudget;
     private Duration stalenessThreshold;
+    private Duration recoveryBudget;
 
     /**
      * Constructor starting with default {@link SchedulerConfig}.
@@ -72,6 +73,8 @@ public class SchedulerConfigBuilder {
                 .ifPresent(this::retryBudget);
         properties.getCarbonIntensityStalenessThreshold()
                 .ifPresent(this::stalenessThreshold);
+        properties.getCarbonIntensityRecoveryBudget()
+                .ifPresent(this::recoveryBudget);
     }
 
     public SchedulerConfigBuilder startMode(SchedulerConfig.StartMode startMode) {
@@ -173,6 +176,13 @@ public class SchedulerConfigBuilder {
         return this;
     }
 
+    public SchedulerConfigBuilder recoveryBudget(Duration recoveryBudget) {
+        Assert.notNull(recoveryBudget, "recoveryBudget cannot be null");
+        Assert.isTrue(!recoveryBudget.isZero() && !recoveryBudget.isNegative(), "recoveryBudget must be positive");
+        this.recoveryBudget = recoveryBudget;
+        return this;
+    }
+
     public SchedulerConfig build() {
         var schedulerConfig = new SchedulerConfig();
         schedulerConfig.setEnabled(enabled);
@@ -194,6 +204,7 @@ public class SchedulerConfigBuilder {
                             .retryBackoffMultiplier(retryBackoffMultiplier)
                             .retryBudget(retryBudget)
                             .stalenessThreshold(stalenessThreshold)
+                            .recoveryBudget(recoveryBudget)
                             .build());
         }
 

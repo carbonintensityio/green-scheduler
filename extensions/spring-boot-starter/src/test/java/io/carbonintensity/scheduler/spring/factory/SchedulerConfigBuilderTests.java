@@ -195,6 +195,7 @@ class SchedulerConfigBuilderTests {
                 .retryBackoffMultiplier(2.5)
                 .retryBudget(Duration.ofSeconds(3))
                 .stalenessThreshold(Duration.ofHours(6))
+                .recoveryBudget(Duration.ofMinutes(15))
                 .build();
 
         var apiConfig = schedulerConfig.getCarbonIntensityApiConfig();
@@ -203,12 +204,16 @@ class SchedulerConfigBuilderTests {
         assertThat(apiConfig.getRetryBackoffMultiplier()).isEqualTo(2.5);
         assertThat(apiConfig.getRetryBudget()).isEqualTo(Duration.ofSeconds(3));
         assertThat(apiConfig.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+        assertThat(apiConfig.getRecoveryBudget()).isEqualTo(Duration.ofMinutes(15));
 
         assertThrows(IllegalArgumentException.class, () -> builder.retryMaxAttempts(0));
         assertThrows(IllegalArgumentException.class, () -> builder.retryBackoffMultiplier(0.5));
         assertThrows(IllegalArgumentException.class, () -> builder.retryInitialBackoff(null));
         assertThrows(IllegalArgumentException.class, () -> builder.retryBudget(null));
         assertThrows(IllegalArgumentException.class, () -> builder.stalenessThreshold(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.recoveryBudget(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.recoveryBudget(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> builder.recoveryBudget(Duration.ofSeconds(-1)));
     }
 
     @Test
@@ -221,6 +226,7 @@ class SchedulerConfigBuilderTests {
         var apiConfig = schedulerConfig.getCarbonIntensityApiConfig();
         assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_MAX_ATTEMPTS);
         assertThat(apiConfig.getStalenessThreshold()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_STALENESS_THRESHOLD);
+        assertThat(apiConfig.getRecoveryBudget()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RECOVERY_BUDGET);
     }
 
     @Test

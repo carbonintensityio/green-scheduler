@@ -28,6 +28,7 @@ public class GreenSchedulerConfigurationProperties {
     private Double carbonIntensityRetryBackoffMultiplier;
     private Duration carbonIntensityRetryBudget;
     private Duration carbonIntensityStalenessThreshold;
+    private Duration carbonIntensityRecoveryBudget;
 
     public boolean isEnabled() {
         return enabled;
@@ -123,5 +124,13 @@ public class GreenSchedulerConfigurationProperties {
 
     public void setCarbonIntensityStalenessThreshold(Duration carbonIntensityStalenessThreshold) {
         this.carbonIntensityStalenessThreshold = carbonIntensityStalenessThreshold;
+    }
+
+    public Duration getCarbonIntensityRecoveryBudget() {
+        return carbonIntensityRecoveryBudget;
+    }
+
+    public void setCarbonIntensityRecoveryBudget(Duration carbonIntensityRecoveryBudget) {
+        this.carbonIntensityRecoveryBudget = carbonIntensityRecoveryBudget;
     }
 }

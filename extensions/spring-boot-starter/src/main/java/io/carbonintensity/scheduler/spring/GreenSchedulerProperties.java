@@ -34,7 +34,7 @@ public class GreenSchedulerProperties {
             Integer maxConcurrentPerSlot, Duration overdueGracePeriod, Duration shutdownGracePeriod, String apiKey,
             String apiUrl, Integer carbonIntensityRetryMaxAttempts, Duration carbonIntensityRetryInitialBackoff,
             Double carbonIntensityRetryBackoffMultiplier, Duration carbonIntensityRetryBudget,
-            Duration carbonIntensityStalenessThreshold) {
+            Duration carbonIntensityStalenessThreshold, Duration carbonIntensityRecoveryBudget) {
         this.enabled = Objects.requireNonNullElse(enabled, DEFAULT_ENABLED);
         this.startMode = Objects.requireNonNullElse(startMode, DEFAULT_START_MODE);
         this.jobExecutors = Objects.requireNonNullElse(jobExecutors, DEFAULT_NUMBER_OF_JOB_EXECUTORS);
@@ -50,6 +50,7 @@ public class GreenSchedulerProperties {
         this.carbonIntensityRetryBackoffMultiplier = carbonIntensityRetryBackoffMultiplier;
         this.carbonIntensityRetryBudget = carbonIntensityRetryBudget;
         this.carbonIntensityStalenessThreshold = carbonIntensityStalenessThreshold;
+        this.carbonIntensityRecoveryBudget = carbonIntensityRecoveryBudget;
     }
 
     public GreenSchedulerProperties() {
@@ -127,6 +128,14 @@ public class GreenSchedulerProperties {
      * carbon-aware decision when the live API is unreachable. Default 4 hours.
      */
     private Duration carbonIntensityStalenessThreshold;
+
+    /**
+     * Total wall-clock time the asynchronous, off-critical-path background recovery poller may keep
+     * retrying a zone whose live fetch failed, before giving up until the next foreground failure
+     * retriggers it. The poller's own poll interval (30 seconds) is an internal, non-configurable
+     * constant - only this total budget can be tuned. Default 10 minutes.
+     */
+    private Duration carbonIntensityRecoveryBudget;
 
     /**
      * Gets scheduler start mode.
@@ -208,5 +217,9 @@ public class GreenSchedulerProperties {
 
     public Optional<Duration> getCarbonIntensityStalenessThreshold() {
         return Optional.ofNullable(carbonIntensityStalenessThreshold);
+    }
+
+    public Optional<Duration> getCarbonIntensityRecoveryBudget() {
+        return Optional.ofNullable(carbonIntensityRecoveryBudget);
     }
 }

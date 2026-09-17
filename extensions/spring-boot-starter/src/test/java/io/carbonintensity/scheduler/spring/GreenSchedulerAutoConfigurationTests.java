@@ -91,7 +91,8 @@ class GreenSchedulerAutoConfigurationTests {
                         "green-scheduler.carbon-intensity-retry-initial-backoff=PT0.5S",
                         "green-scheduler.carbon-intensity-retry-backoff-multiplier=2.5",
                         "green-scheduler.carbon-intensity-retry-budget=PT3S",
-                        "green-scheduler.carbon-intensity-staleness-threshold=PT6H")
+                        "green-scheduler.carbon-intensity-staleness-threshold=PT6H",
+                        "green-scheduler.carbon-intensity-recovery-budget=PT15M")
                 .run(context -> {
                     var apiConfig = context.getBean(SchedulerConfig.class).getCarbonIntensityApiConfig();
                     assertThat(apiConfig.getRetryMaxAttempts()).isEqualTo(5);
@@ -99,6 +100,7 @@ class GreenSchedulerAutoConfigurationTests {
                     assertThat(apiConfig.getRetryBackoffMultiplier()).isEqualTo(2.5);
                     assertThat(apiConfig.getRetryBudget()).isEqualTo(Duration.ofSeconds(3));
                     assertThat(apiConfig.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+                    assertThat(apiConfig.getRecoveryBudget()).isEqualTo(Duration.ofMinutes(15));
                 });
     }
 

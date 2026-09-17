@@ -112,4 +112,28 @@ class TestCarbonIntensityApiConfig {
         assertThrows(IllegalArgumentException.class, () -> builder.retryBackoffMultiplier(invalid));
     }
 
+    @Test
+    void whenRecoveryBudgetIsNotSet_thenDefaultOfTenMinutesApplies() {
+        var config = builder.build();
+
+        assertThat(config.getRecoveryBudget()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RECOVERY_BUDGET)
+                .isEqualTo(Duration.ofMinutes(10));
+    }
+
+    @Test
+    void whenRecoveryBudgetIsExplicitlySet_thenItOverridesTheDefault() {
+        var config = builder
+                .recoveryBudget(Duration.ofMinutes(20))
+                .build();
+
+        assertThat(config.getRecoveryBudget()).isEqualTo(Duration.ofMinutes(20));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "PT0S", "PT-1S" })
+    void whenRecoveryBudgetIsZeroOrNegative_thenThrowException(String durationText) {
+        var invalid = Duration.parse(durationText);
+        assertThrows(IllegalArgumentException.class, () -> builder.recoveryBudget(invalid));
+    }
+
 }

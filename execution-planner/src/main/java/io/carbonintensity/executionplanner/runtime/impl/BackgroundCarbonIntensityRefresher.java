@@ -36,8 +36,6 @@ class BackgroundCarbonIntensityRefresher implements AutoCloseable {
 
     /** How long to wait between background recovery attempts for a zone. */
     static final Duration DEFAULT_POLL_INTERVAL = Duration.ofSeconds(30);
-    /** Give up polling a zone after this many failed attempts, until the next foreground failure retriggers it. */
-    static final int DEFAULT_MAX_ATTEMPTS = 20;
 
     private final CarbonIntensityApi restApi;
     private final LastKnownIntensityCache lastKnown;
@@ -46,10 +44,6 @@ class BackgroundCarbonIntensityRefresher implements AutoCloseable {
     private final int maxAttempts;
     private final ScheduledExecutorService executor;
     private final Set<String> zonesBeingRecovered = ConcurrentHashMap.newKeySet();
-
-    BackgroundCarbonIntensityRefresher(CarbonIntensityApi restApi, LastKnownIntensityCache lastKnown, Clock clock) {
-        this(restApi, lastKnown, clock, DEFAULT_POLL_INTERVAL, DEFAULT_MAX_ATTEMPTS);
-    }
 
     BackgroundCarbonIntensityRefresher(CarbonIntensityApi restApi, LastKnownIntensityCache lastKnown, Clock clock,
             Duration pollInterval, int maxAttempts) {
