@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -158,22 +159,45 @@ public class CarbonIntensityDataFetcherImpl implements CarbonIntensityDataFetche
     }
 
     /**
+     * Granularity used to repeat a synthesized last-known value across the requested window: a standard
+     * ENTSO-E day-ahead resolution, and coincidentally {@code FixedWindowPlanner}'s own fixed candidate
+     * step, so a candidate slot aligned to it gets {@code value} back exactly (see the CIIO-475 follow-up
+     * below), not some fraction of it.
+     */
+    private static final Duration SYNTHESIZED_RESOLUTION = Duration.ofHours(1);
+
+    /**
      * Builds a synthetic result for {@code zonedPeriod} that applies a single last-known value uniformly
      * across the whole requested window. There is no way to rank sub-slots within the window without real
      * granular data, so every slot in it reports the same intensity and the planner effectively picks the
      * earliest one - which is the honest thing to do with a single stale reading.
+     * <p>
+     * CIIO-475 follow-up: this used to encode the whole window as a <em>single</em> period whose resolution
+     * was the entire (often multi-hour) span, relying on {@code Timeslot}'s partial-overlap arithmetic to
+     * scale {@code value} down for any candidate slot shorter than the window. For a realistic, low-decimal
+     * -precision reading (e.g. {@code "45.2"}) divided by a multi-hour resolution in seconds, that division
+     * silently rounded to an exact zero - fabricating the very "genuine zero" this whole last-known-value
+     * path exists to avoid, and which every {@code fixedWindow()} fire in the pilot then reported. Repeating
+     * {@code value} across {@link #SYNTHESIZED_RESOLUTION}-sized buckets instead means an aligned candidate
+     * slot matches a bucket exactly and gets {@code value} back verbatim, with no division at all.
      */
     private static CarbonIntensity synthesizeFromLastKnownValue(ZonedCarbonIntensityPeriod zonedPeriod, BigDecimal value) {
         Instant start = zonedPeriod.getStartTime().toInstant();
         Instant end = zonedPeriod.getEndTime().toInstant();
         Duration span = Duration.between(start, end);
+        long resolutionSeconds = SYNTHESIZED_RESOLUTION.toSeconds();
+        // ceil(span / resolution), at least 1 - avoids Math.ceilDiv, which older bytecode targets may not
+        // have available.
+        int buckets = span.isZero() || span.isNegative()
+                ? 1
+                : (int) Math.max(1, (span.toSeconds() + resolutionSeconds - 1) / resolutionSeconds);
 
         CarbonIntensity result = new CarbonIntensity();
         result.setZone(zonedPeriod.getZone());
         result.setStart(start);
         result.setEnd(end);
-        result.setResolution(span.isZero() || span.isNegative() ? Duration.ofMinutes(30) : span);
-        result.setData(new ArrayList<>(List.of(value)));
+        result.setResolution(SYNTHESIZED_RESOLUTION);
+        result.setData(new ArrayList<>(Collections.nCopies(buckets, value)));
         return result;
     }
 

@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.carbonintensity.executionplanner.planner.CarbonIntensityPeriod;
+import io.carbonintensity.executionplanner.planner.Timeslot;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiConfig;
 import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityApiException;
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
@@ -130,8 +132,56 @@ class TestCarbonIntensityDataFetcher {
         var result = dataFetcher.fetchCarbonIntensity(nextPeriod);
 
         assertThat(result.hasData()).isTrue();
-        assertThat(result.getData()).containsExactly(BigDecimal.valueOf(42));
+        // CIIO-475 follow-up: repeated hourly across the full 24h window (not one giant, whole-window
+        // bucket) so a candidate slot aligned to it gets 42 back verbatim rather than a diluted fraction -
+        // see synthesizeFromLastKnownValue's Javadoc for why that distinction matters.
+        assertThat(result.getResolution()).isEqualTo(Duration.ofHours(1));
+        assertThat(result.getData()).hasSize(24).containsOnly(BigDecimal.valueOf(42));
         assertThat(result.getZone()).isEqualTo("nl");
+    }
+
+    /**
+     * CIIO-475 follow-up: reproduces the pilot's exact daily-rollover scenario for {@code nl-fixed-window}
+     * (2026-09-18T02:00 CEST) - a live fetch for the new day's window fails outright (404, not retried),
+     * while a fresh last-known real reading exists from an earlier successful fetch for the same zone. An
+     * interior 1-hour candidate slot - {@code FixedWindowPlanner}'s own hardcoded step, applied to a 1-hour
+     * job, matching {@code nl-fixed-window} - must get that real reading back undiluted, never a fabricated
+     * or diluted zero, once run through the exact same arithmetic {@code FixedWindowPlanner} uses.
+     * <p>
+     * Deliberately an interior slot, not the window's very first or last candidate: those touch this
+     * fixture's own boundary at a single instant, which only {@code Timeslot}'s CIIO-475 overlap fix (a
+     * separate, already-merged PR on the {@code ciio-475} branch, not present here) distinguishes from a
+     * real overlap - exercising that here would conflate two independently-owned fixes.
+     */
+    @Test
+    void givenATotalFetchFailureAtADayBoundary_thenTheReusedLastKnownValueSurvivesThePlannersArithmeticUndiluted() {
+        CarbonIntensityDataFetcher dataFetcher = fetcherWithStalenessThreshold(Duration.ofHours(4));
+        CarbonIntensity realReading = new CarbonIntensity();
+        realReading.setStart(zonedPeriod.getStartTime().toInstant());
+        realReading.setEnd(zonedPeriod.getEndTime().toInstant());
+        realReading.setZone("nl");
+        realReading.setResolution(Duration.ofHours(1));
+        realReading.setData(List.of(new BigDecimal("45.2")));
+        when(restApi.getCarbonIntensity(zonedPeriod)).thenReturn(CompletableFuture.completedFuture(realReading));
+        dataFetcher.fetchCarbonIntensity(zonedPeriod); // records 45.2 as the last-known value for "nl"
+
+        ZonedCarbonIntensityPeriod newDaysWindow = anotherPeriodForTheSameZone();
+        when(restApi.getCarbonIntensity(newDaysWindow))
+                .thenReturn(CompletableFuture.failedFuture(new CarbonIntensityApiException("404 - not published yet")));
+        clock.advance(Duration.ofMinutes(1));
+
+        CarbonIntensity synthesized = dataFetcher.fetchCarbonIntensity(newDaysWindow);
+        assertThat(synthesized.hasData()).isTrue();
+
+        ZonedDateTime windowStart = newDaysWindow.getStartTime();
+        ZonedDateTime candidateStart = windowStart.plusHours(5);
+        ZonedDateTime candidateEnd = candidateStart.plusHours(1);
+        List<CarbonIntensityPeriod> periods = CarbonIntensityPeriod.of(synthesized);
+
+        BigDecimal chosen = Timeslot.calculateCarbonIntensity(periods, candidateStart, candidateEnd);
+
+        assertThat(chosen).isNotEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(chosen).isEqualByComparingTo("45.2");
     }
 
     @Test

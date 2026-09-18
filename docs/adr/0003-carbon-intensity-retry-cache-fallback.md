@@ -227,6 +227,30 @@ a symptom that actually belongs to a different one:
 | 5 | `LastKnownIntensityCache` staleness | `stalenessThreshold` = 4h | How old a real, previously-fetched value may be and still count as an honest carbon-aware decision. |
 | 6 | `BackgroundCarbonIntensityRefresher` (async, off critical path) | poll every 30s (internal, fixed), budget configurable via `carbonIntensityRecoveryBudget`, default ~10 min | How persistently the off-critical-path recovery poller tries before giving up, so mechanism 3's one-hour negative TTL doesn't let a short outage degrade scheduling for longer than necessary. |
 
+**CIIO-475 follow-up (added after the day-rollover gap recurred post-fix):** after this ADR's fixes were
+redeployed to the pilot, the recurring day-rollover 404 described above (three zones, ~02:00 local) stopped
+leaving scheduling non-carbon-aware, but `fixedWindow()` jobs still fired with a fabricated
+`intensityValue: 0.0` at exactly that moment - this time from inside the last-known-value reuse path itself,
+not from the routing around it. Root cause was two layered defects, both now fixed:
+
+- `synthesizeFromLastKnownValue` (decision 2 above) encoded the reused value as a *single* period whose
+  resolution was the entire, often multi-hour, requested window - relying on `Timeslot`'s partial-overlap
+  arithmetic to scale it down for any shorter candidate slot.
+- `Timeslot.calculateCarbonIntensity`'s proration divided with `BigDecimal.divide(divisor, RoundingMode)`,
+  which rounds the quotient to the *dividend's own scale*. A realistic, low-decimal-precision reading (e.g.
+  `"45.2"`, scale 1) divided by a multi-hour resolution in seconds silently rounded to an exact `0.0`,
+  indistinguishable from a genuine zero-emission reading - so the very case row 5's design paragraph
+  described as "the honest thing to do with a single stale reading" was instead fabricating the same kind of
+  number this whole ADR set out to eliminate.
+
+Fixed on the same two branches this ADR's mechanism spans: `synthesizeFromLastKnownValue` now repeats the
+last-known value across 1-hour buckets (a standard ENTSO-E day-ahead resolution, and coincidentally
+`FixedWindowPlanner`'s own fixed candidate step) instead of one whole-window bucket, so an aligned candidate
+gets the value back verbatim with no division at all; `Timeslot`'s proration additionally now divides with
+`MathContext.DECIMAL64` rather than the dividend's scale, as a general hardening against the same
+precision-underflow for any future resolution/duration/value-scale combination, real ENTSO-E data included.
+See CIIO-475 (PR #312) and this ticket's own PR #306 for the test coverage.
+
 Row 6 was originally the only one of the six with an internal, non-configurable constant instead of a
 five-knob-pattern config field (see "Configuration" above) - its ~10-minute total budget was sized against no
 real-world data at design time. Two independent, unrelated outages during the pilot's first week exceeded that
