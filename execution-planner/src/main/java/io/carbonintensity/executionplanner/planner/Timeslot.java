@@ -1,7 +1,7 @@
 package io.carbonintensity.executionplanner.planner;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -89,6 +89,13 @@ public class Timeslot {
                 .reduce(BigDecimal::add);
     }
 
+    /**
+     * Precision used for the partial-period division in {@link #prorate}. Deliberately generous (16
+     * significant digits) rather than the dividend's own scale: see {@link #prorate}'s Javadoc for why the
+     * naive 2-arg {@code divide(divisor, RoundingMode)} silently fabricates a zero here (CIIO-475).
+     */
+    private static final MathContext PRORATION_PRECISION = MathContext.DECIMAL64;
+
     private static BigDecimal calculateCarbonIntensity(ZonedDateTime start, ZonedDateTime end, CarbonIntensityPeriod ci) {
         Instant ciStart = ci.moment();
         Instant ciEnd = ciStart.plus(ci.resolution());
@@ -105,17 +112,37 @@ public class Timeslot {
             } else {
                 secsInCiPeriod = Duration.between(start.toInstant(), ciEnd).getSeconds();
             }
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            return prorate(ci, secsInCiPeriod);
         }
         //job ends in or on ci window, but does not start in it
         if (end.toInstant().compareTo(ciStart) >= 0 && end.toInstant().compareTo(ciEnd) <= 0) {
             long secsInCiPeriod = Duration.between(ciStart, end.toInstant()).getSeconds();
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            return prorate(ci, secsInCiPeriod);
         }
 
-        return BigDecimal.ZERO;
+        // Unreachable: the caller only invokes this method for a ci that CarbonIntensityPeriod#overlaps
+        // already confirmed genuinely overlaps [start, end) (start < ciEnd && ciStart < end), and the three
+        // branches above are exhaustive for every such overlap (candidate contains ci, candidate starts
+        // inside ci, or candidate ends inside ci). A silent BigDecimal.ZERO here would be exactly the kind
+        // of fabricated-zero bug this class exists to prevent (CIIO-475) - fail loudly instead.
+        throw new IllegalStateException(
+                "Unreachable: CarbonIntensityPeriod.overlaps() reported an overlap that calculateCarbonIntensity "
+                        + "could not classify - candidate=[" + start + "," + end + "), period=[" + ciStart + "," + ciEnd + ")");
+    }
+
+    /**
+     * @return {@code ci}'s value scaled down to the fraction of its own resolution covered by
+     *         {@code coveredSeconds}, and back up by that same fraction - i.e. its contribution to a
+     *         candidate that only partially overlaps it.
+     *         <p>
+     *         Multiplies before dividing (rather than the mathematically equivalent divide-then-multiply) so
+     *         there is only ever one rounding step, at {@link #PRORATION_PRECISION} rather than the 2-arg
+     *         {@code divide(divisor, RoundingMode)}'s dividend-scale rounding that used to fabricate a zero
+     *         here - see that constant's Javadoc (CIIO-475).
+     */
+    private static BigDecimal prorate(CarbonIntensityPeriod ci, long coveredSeconds) {
+        return ci.value().multiply(BigDecimal.valueOf(coveredSeconds))
+                .divide(BigDecimal.valueOf(ci.resolution().getSeconds()), PRORATION_PRECISION);
     }
 
     @Override
