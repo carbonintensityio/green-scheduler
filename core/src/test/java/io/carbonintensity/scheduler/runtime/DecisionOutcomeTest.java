@@ -13,9 +13,9 @@ import io.carbonintensity.executionplanner.spi.PlannedExecution;
 import io.carbonintensity.scheduler.observability.DecisionReason;
 
 /**
- * CIIO-485: a {@link DecisionReason#GREENEST_AVAILABLE_SLOT} entry with no backing intensity value is a
- * contradiction - it claims a carbon-aware, measured choice while carrying no measurement at all. This locks
- * down that {@link DecisionOutcome#from} never lets that combination through.
+ * A {@link DecisionReason#GREENEST_AVAILABLE_SLOT} entry with no backing intensity value is a contradiction - it
+ * claims a carbon-aware, measured choice while carrying no measurement at all. This locks down that
+ * {@link DecisionOutcome#from} never lets that combination through.
  */
 class DecisionOutcomeTest {
 
