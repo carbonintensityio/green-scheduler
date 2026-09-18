@@ -25,7 +25,15 @@ public enum DecisionReason {
      * A {@code successive()} job found no green slot and fell back to plain
      * interval spacing (the average of its minimum/maximum gap).
      */
-    FALLBACK_TO_PLAIN_INTERVAL("no green slot was found - fell back to plain interval spacing");
+    FALLBACK_TO_PLAIN_INTERVAL("no green slot was found - fell back to plain interval spacing"),
+
+    /**
+     * No real carbon-intensity data was available for any candidate slot in
+     * the job's window, so an arbitrary slot was chosen without a
+     * carbon-aware basis - distinct from {@link #GREENEST_AVAILABLE_SLOT},
+     * which implies a real measurement backed the choice.
+     */
+    NO_DATA_AVAILABLE("no real carbon-intensity data was available - an arbitrary slot was chosen");
 
     private final String label;
 

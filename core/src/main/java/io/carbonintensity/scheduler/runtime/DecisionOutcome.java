@@ -34,10 +34,18 @@ record DecisionOutcome(DecisionReason reason, OptionalDouble intensityValue) {
      * triggers build a {@code DecisionOutcome} directly instead, always
      * pairing their reason with {@link OptionalDouble#empty()} - never an
      * inherited value.
+     * <p>
+     * A {@link DecisionReason#GREENEST_AVAILABLE_SLOT} reason with no backing
+     * intensity value is downgraded to {@link DecisionReason#NO_DATA_AVAILABLE}
+     * here: {@code GREENEST_AVAILABLE_SLOT} claims a real, measured basis for
+     * the choice, which a missing intensity value contradicts (CIIO-485).
      */
     static DecisionOutcome from(PlannedExecution plannedExecution, DecisionReason reason) {
         Objects.requireNonNull(plannedExecution, "PlannedExecution cannot be null");
         BigDecimal intensity = plannedExecution.intensityValue().orElse(null);
+        if (intensity == null && reason == DecisionReason.GREENEST_AVAILABLE_SLOT) {
+            reason = DecisionReason.NO_DATA_AVAILABLE;
+        }
         return new DecisionOutcome(reason,
                 intensity == null ? OptionalDouble.empty() : OptionalDouble.of(intensity.doubleValue()));
     }
