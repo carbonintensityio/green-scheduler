@@ -142,7 +142,10 @@ public class GreenSchedulerConfigurationProperties {
         return carbonIntensityRetryBackoffMultiplier;
     }
 
-    /** See {@link #getCarbonIntensityRetryBackoffMultiplier()}. */
+    /**
+     * @param carbonIntensityRetryBackoffMultiplier see
+     *        {@link #getCarbonIntensityRetryBackoffMultiplier()}
+     */
     public void setCarbonIntensityRetryBackoffMultiplier(Double carbonIntensityRetryBackoffMultiplier) {
         this.carbonIntensityRetryBackoffMultiplier = carbonIntensityRetryBackoffMultiplier;
     }
@@ -155,7 +158,10 @@ public class GreenSchedulerConfigurationProperties {
         return carbonIntensityRetryBudget;
     }
 
-    /** See {@link #getCarbonIntensityRetryBudget()}. */
+    /**
+     * @param carbonIntensityRetryBudget see
+     *        {@link #getCarbonIntensityRetryBudget()}
+     */
     public void setCarbonIntensityRetryBudget(Duration carbonIntensityRetryBudget) {
         this.carbonIntensityRetryBudget = carbonIntensityRetryBudget;
     }
@@ -168,7 +174,10 @@ public class GreenSchedulerConfigurationProperties {
         return carbonIntensityStalenessThreshold;
     }
 
-    /** See {@link #getCarbonIntensityStalenessThreshold()}. */
+    /**
+     * @param carbonIntensityStalenessThreshold see
+     *        {@link #getCarbonIntensityStalenessThreshold()}
+     */
     public void setCarbonIntensityStalenessThreshold(Duration carbonIntensityStalenessThreshold) {
         this.carbonIntensityStalenessThreshold = carbonIntensityStalenessThreshold;
     }
@@ -181,7 +190,10 @@ public class GreenSchedulerConfigurationProperties {
         return carbonIntensityRecoveryBudget;
     }
 
-    /** See {@link #getCarbonIntensityRecoveryBudget()}. */
+    /**
+     * @param carbonIntensityRecoveryBudget see
+     *        {@link #getCarbonIntensityRecoveryBudget()}
+     */
     public void setCarbonIntensityRecoveryBudget(Duration carbonIntensityRecoveryBudget) {
         this.carbonIntensityRecoveryBudget = carbonIntensityRecoveryBudget;
     }
