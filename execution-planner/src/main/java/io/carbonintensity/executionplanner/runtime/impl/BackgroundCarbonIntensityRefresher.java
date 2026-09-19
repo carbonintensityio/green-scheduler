@@ -99,7 +99,10 @@ class BackgroundCarbonIntensityRefresher implements AutoCloseable {
                 zonesBeingRecovered.remove(zone);
                 return;
             }
-        } catch (RuntimeException e) {
+        } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") RuntimeException e) {
+            // Deliberately broad: this is a best-effort background retry loop, not a critical-path
+            // call - any unanticipated failure here must fall through to the same "schedule the next
+            // attempt or give up" logic below, not propagate and kill the recovery poller outright.
             logger.trace("Background carbon-intensity recovery attempt {} for zone {} still failing", attemptNumber, zone, e);
         }
 

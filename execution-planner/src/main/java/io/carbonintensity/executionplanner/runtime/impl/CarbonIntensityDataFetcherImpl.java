@@ -110,7 +110,11 @@ public class CarbonIntensityDataFetcherImpl implements CarbonIntensityDataFetche
         CarbonIntensity fetched;
         try {
             fetched = restApi.getCarbonIntensity(zonedPeriod).join();
-        } catch (RuntimeException e) {
+        } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") RuntimeException e) {
+            // Deliberately broad: .join() only ever throws unchecked exceptions, and any failure here
+            // - not just the expected CompletionException - must fall through to the same graceful
+            // degradation (cache/last-known-value/background recovery), never propagate and break the
+            // scheduler's critical path.
             logger.warn("Failed to get live carbon intensity data for zone {} after retries", zonedPeriod.getZone(), e);
             backgroundRefresher.ensureRefreshing(zonedPeriod);
             CarbonIntensity empty = storeInCache(emptyResult(zonedPeriod));

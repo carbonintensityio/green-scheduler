@@ -92,13 +92,17 @@ public class CarbonIntensityRestApi implements CarbonIntensityApi {
         long delayMillis = RetryBackoff.delayMillis(attemptNumber, config.getRetryInitialBackoff(),
                 config.getRetryBackoffMultiplier());
         if (System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis) >= deadlineNanos) {
-            logger.debug("Not retrying CarbonIntensity API call: the {} retry budget would be exceeded",
-                    config.getRetryBudget());
+            if (logger.isDebugEnabled()) {
+                logger.debug("Not retrying CarbonIntensity API call: the {} retry budget would be exceeded",
+                        config.getRetryBudget());
+            }
             return CompletableFuture.failedFuture(error);
         }
 
-        logger.debug("Transient error contacting CarbonIntensity API (attempt {}/{}), retrying in {} ms",
-                attemptNumber, config.getRetryMaxAttempts(), delayMillis, cause);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Transient error contacting CarbonIntensity API (attempt {}/{}), retrying in {} ms",
+                    attemptNumber, config.getRetryMaxAttempts(), delayMillis, cause);
+        }
         return CompletableFuture
                 .supplyAsync(() -> null, CompletableFuture.delayedExecutor(delayMillis, TimeUnit.MILLISECONDS))
                 .thenCompose(ignored -> attempt(request, attemptNumber + 1, deadlineNanos));

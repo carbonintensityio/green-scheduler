@@ -66,17 +66,17 @@ public class FixedWindowPlanner implements CarbonIntensityPlanner<FixedWindowPla
     }
 
     /**
-     * @return {@code false} when {@code constraints} is {@code null}, or when no genuine carbon-intensity
-     *         data (live or a still-fresh last-known value) is available for the window - in which case the
-     *         caller falls back to its always-available fallback route (fixed cron midpoint), instead of
-     *         this planner returning a fabricated "greenest" slot. See CIIO-470.
+     * @return {@code false} when {@code constraints} is {@code null}, or when no
+     *         genuine carbon-intensity data (live or a still-fresh last-known
+     *         value) is available for the window - in which case the caller
+     *         falls back to its always-available fallback route (fixed cron
+     *         midpoint), instead of this planner returning a fabricated
+     *         "greenest" slot.
      */
     @Override
     public boolean canSchedule(FixedWindowPlanningConstraints constraints) {
-        if (constraints == null) {
-            return false;
-        }
-        return dataFetcher.fetchCarbonIntensity(buildPeriod(constraints)).hasData();
+        return constraints != null
+                && dataFetcher.fetchCarbonIntensity(buildPeriod(constraints)).hasData();
     }
 
     @Override

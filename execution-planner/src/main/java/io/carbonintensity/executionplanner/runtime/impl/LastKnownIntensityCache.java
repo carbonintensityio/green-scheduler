@@ -3,6 +3,7 @@ package io.carbonintensity.executionplanner.runtime.impl;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,7 +46,7 @@ public class LastKnownIntensityCache {
     }
 
     private static String normalize(String zone) {
-        return zone.toLowerCase().trim();
+        return zone.toLowerCase(Locale.ROOT).trim();
     }
 
     private record Entry(BigDecimal value, Instant fetchedAt) {

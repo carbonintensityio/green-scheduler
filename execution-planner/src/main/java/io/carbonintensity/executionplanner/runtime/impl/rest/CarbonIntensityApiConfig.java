@@ -126,35 +126,35 @@ public class CarbonIntensityApiConfig {
             return this;
         }
 
-        public Builder retryMaxAttempts(Integer retryMaxAttempts) {
-            if (retryMaxAttempts != null && retryMaxAttempts < 1) {
-                throw new IllegalArgumentException("retryMaxAttempts must be at least 1, was " + retryMaxAttempts);
+        public Builder retryMaxAttempts(Integer maxAttempts) {
+            if (maxAttempts != null && maxAttempts < 1) {
+                throw new IllegalArgumentException("retryMaxAttempts must be at least 1, was " + maxAttempts);
             }
-            this.retryMaxAttempts = retryMaxAttempts;
+            this.retryMaxAttempts = maxAttempts;
             return this;
         }
 
-        public Builder retryInitialBackoff(Duration retryInitialBackoff) {
-            this.retryInitialBackoff = retryInitialBackoff;
+        public Builder retryInitialBackoff(Duration initialBackoff) {
+            this.retryInitialBackoff = initialBackoff;
             return this;
         }
 
-        public Builder retryBackoffMultiplier(Double retryBackoffMultiplier) {
-            if (retryBackoffMultiplier != null && retryBackoffMultiplier < 1.0) {
+        public Builder retryBackoffMultiplier(Double backoffMultiplier) {
+            if (backoffMultiplier != null && backoffMultiplier < 1.0) {
                 throw new IllegalArgumentException(
-                        "retryBackoffMultiplier must be at least 1.0, was " + retryBackoffMultiplier);
+                        "retryBackoffMultiplier must be at least 1.0, was " + backoffMultiplier);
             }
-            this.retryBackoffMultiplier = retryBackoffMultiplier;
+            this.retryBackoffMultiplier = backoffMultiplier;
             return this;
         }
 
-        public Builder retryBudget(Duration retryBudget) {
-            this.retryBudget = retryBudget;
+        public Builder retryBudget(Duration budget) {
+            this.retryBudget = budget;
             return this;
         }
 
-        public Builder stalenessThreshold(Duration stalenessThreshold) {
-            this.stalenessThreshold = stalenessThreshold;
+        public Builder stalenessThreshold(Duration threshold) {
+            this.stalenessThreshold = threshold;
             return this;
         }
 
@@ -162,11 +162,11 @@ public class CarbonIntensityApiConfig {
          * Sets the total wall-clock recovery budget. Must be positive: a zero or negative budget would leave
          * the background poller with no time to ever attempt a recovery.
          */
-        public Builder recoveryBudget(Duration recoveryBudget) {
-            if (recoveryBudget != null && (recoveryBudget.isZero() || recoveryBudget.isNegative())) {
-                throw new IllegalArgumentException("recoveryBudget must be positive, was " + recoveryBudget);
+        public Builder recoveryBudget(Duration budget) {
+            if (budget != null && (budget.isZero() || budget.isNegative())) {
+                throw new IllegalArgumentException("recoveryBudget must be positive, was " + budget);
             }
-            this.recoveryBudget = recoveryBudget;
+            this.recoveryBudget = budget;
             return this;
         }
 

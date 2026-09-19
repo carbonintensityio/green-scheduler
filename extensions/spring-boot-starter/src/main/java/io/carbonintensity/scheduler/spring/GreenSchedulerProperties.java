@@ -100,40 +100,46 @@ public class GreenSchedulerProperties {
     private String apiUrl = DEFAULT_API_URL;
 
     /**
-     * Total attempts (1 original + retries) for a single carbon-intensity fetch on the scheduler's critical
-     * path. Only retried on a transient connectivity error, never on an HTTP error response. Default 3.
+     * Total attempts (1 original + retries) for a single carbon-intensity
+     * fetch on the scheduler's critical path. Only retried on a transient
+     * connectivity error, never on an HTTP error response. Default 3.
      */
     private Integer carbonIntensityRetryMaxAttempts;
 
     /**
-     * Delay before the first carbon-intensity fetch retry; each subsequent retry multiplies this by
-     * {@link #carbonIntensityRetryBackoffMultiplier}. Default 300ms.
+     * Delay before the first carbon-intensity fetch retry; each subsequent
+     * retry multiplies this by {@link #carbonIntensityRetryBackoffMultiplier}.
+     * Default 300ms.
      */
     private Duration carbonIntensityRetryInitialBackoff;
 
     /**
-     * Multiplier applied to the previous backoff for each subsequent carbon-intensity fetch retry. Default
-     * 3.0 (with the default initial backoff: 300ms, then 900ms).
+     * Multiplier applied to the previous backoff for each subsequent
+     * carbon-intensity fetch retry. Default 3.0 (with the default initial
+     * backoff: 300ms, then 900ms).
      */
     private Double carbonIntensityRetryBackoffMultiplier;
 
     /**
-     * Hard ceiling on the total time (across all attempts) a single carbon-intensity fetch may take.
-     * Default 2 seconds.
+     * Hard ceiling on the total time (across all attempts) a single
+     * carbon-intensity fetch may take. Default 2 seconds.
      */
     private Duration carbonIntensityRetryBudget;
 
     /**
-     * How old a last-known-good carbon-intensity value per zone may be and still be reused as a genuine
-     * carbon-aware decision when the live API is unreachable. Default 4 hours.
+     * How old a last-known-good carbon-intensity value per zone may be and
+     * still be reused as a genuine carbon-aware decision when the live API
+     * is unreachable. Default 4 hours.
      */
     private Duration carbonIntensityStalenessThreshold;
 
     /**
-     * Total wall-clock time the asynchronous, off-critical-path background recovery poller may keep
-     * retrying a zone whose live fetch failed, before giving up until the next foreground failure
-     * retriggers it. The poller's own poll interval (30 seconds) is an internal, non-configurable
-     * constant - only this total budget can be tuned. Default 10 minutes.
+     * Total wall-clock time the asynchronous, off-critical-path background
+     * recovery poller may keep retrying a zone whose live fetch failed,
+     * before giving up until the next foreground failure retriggers it. The
+     * poller's own poll interval (30 seconds) is an internal,
+     * non-configurable constant - only this total budget can be tuned.
+     * Default 10 minutes.
      */
     private Duration carbonIntensityRecoveryBudget;
 
@@ -199,26 +205,32 @@ public class GreenSchedulerProperties {
         return Optional.ofNullable(apiUrl);
     }
 
+    /** @return the configured max attempts, if set */
     public Optional<Integer> getCarbonIntensityRetryMaxAttempts() {
         return Optional.ofNullable(carbonIntensityRetryMaxAttempts);
     }
 
+    /** @return the configured initial backoff, if set */
     public Optional<Duration> getCarbonIntensityRetryInitialBackoff() {
         return Optional.ofNullable(carbonIntensityRetryInitialBackoff);
     }
 
+    /** @return the configured backoff multiplier, if set */
     public Optional<Double> getCarbonIntensityRetryBackoffMultiplier() {
         return Optional.ofNullable(carbonIntensityRetryBackoffMultiplier);
     }
 
+    /** @return the configured retry budget, if set */
     public Optional<Duration> getCarbonIntensityRetryBudget() {
         return Optional.ofNullable(carbonIntensityRetryBudget);
     }
 
+    /** @return the configured staleness threshold, if set */
     public Optional<Duration> getCarbonIntensityStalenessThreshold() {
         return Optional.ofNullable(carbonIntensityStalenessThreshold);
     }
 
+    /** @return the configured recovery budget, if set */
     public Optional<Duration> getCarbonIntensityRecoveryBudget() {
         return Optional.ofNullable(carbonIntensityRecoveryBudget);
     }

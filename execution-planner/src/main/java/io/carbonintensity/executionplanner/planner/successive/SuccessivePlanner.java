@@ -64,23 +64,26 @@ public class SuccessivePlanner implements CarbonIntensityPlanner<SuccessivePlann
     }
 
     /**
-     * @return {@code false} when {@code constraints} is {@code null}, or when no genuine carbon-intensity
-     *         data (live or a still-fresh last-known value) is available for the next candidate day - in
-     *         which case the caller falls back to its always-available fallback route (plain interval
-     *         between the configured min/max gap), instead of this planner returning a fabricated
-     *         "greenest" slot. See CIIO-470.
+     * @return {@code false} when {@code constraints} is {@code null}, or when no
+     *         genuine carbon-intensity data (live or a still-fresh last-known
+     *         value) is available for the next candidate day - in which case the
+     *         caller falls back to its always-available fallback route (plain
+     *         interval between the configured min/max gap), instead of this
+     *         planner returning a fabricated "greenest" slot.
      */
     @Override
     public boolean canSchedule(SuccessivePlanningConstraints constraints) {
-        if (constraints == null) {
-            return false;
-        }
-        return dataFetcher.fetchCarbonIntensity(buildDayPeriod(constraints)).hasData();
+        return constraints != null
+                && dataFetcher.fetchCarbonIntensity(buildDayPeriod(constraints)).hasData();
     }
 
     /**
-     * The carbon-intensity period covering the day the next candidate slot falls in: starting at the last
-     * execution (or the initial start time, before the first run) and spanning 24 hours.
+     * The carbon-intensity period covering the day the next candidate slot falls
+     * in: starting at the last execution (or the initial start time, before the
+     * first run) and spanning 24 hours.
+     *
+     * @param constraints the planning constraints to derive the day period from
+     * @return the 24-hour carbon-intensity period covering the next candidate day
      */
     private static ZonedCarbonIntensityPeriod buildDayPeriod(SuccessivePlanningConstraints constraints) {
         ZonedDateTime dayStart = constraints.getLastExecutionTime() != null ? constraints.getLastExecutionTime()
