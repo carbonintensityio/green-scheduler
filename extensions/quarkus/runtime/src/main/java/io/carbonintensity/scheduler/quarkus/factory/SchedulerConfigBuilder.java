@@ -29,6 +29,30 @@ public class SchedulerConfigBuilder {
     private String apiKey;
     private String apiUrl;
     private CarbonIntensityApi carbonIntensityApi;
+    /**
+     * Maximum number of attempts for a transient carbon-intensity API call,
+     * including the first.
+     */
+    private Integer retryMaxAttempts;
+    /** Delay before the first retry of a failed carbon-intensity API call. */
+    private Duration retryInitialBackoff;
+    /** Factor each subsequent retry delay is multiplied by. */
+    private Double retryBackoffMultiplier;
+    /**
+     * Total wall-clock time a single carbon-intensity API call may spend
+     * retrying.
+     */
+    private Duration retryBudget;
+    /**
+     * Maximum age of a cached carbon-intensity value before it's no longer
+     * reused.
+     */
+    private Duration stalenessThreshold;
+    /**
+     * Total wall-clock time the background recovery poller may spend trying
+     * to recover.
+     */
+    private Duration recoveryBudget;
 
     /**
      * Constructor for pre-populating with properties
@@ -48,6 +72,12 @@ public class SchedulerConfigBuilder {
         shutdownGracePeriod(properties.shutdownGracePeriod().orElse(DEFAULT_SHUTDOWN_GRACE_PERIOD));
         apiUrl(properties.apiUrl().orElse(DEFAULT_API_URL));
         properties.apiKey().ifPresent(this::apiKey);
+        properties.carbonIntensityRetryMaxAttempts().ifPresent(this::retryMaxAttempts);
+        properties.carbonIntensityRetryInitialBackoff().ifPresent(this::retryInitialBackoff);
+        properties.carbonIntensityRetryBackoffMultiplier().ifPresent(this::retryBackoffMultiplier);
+        properties.carbonIntensityRetryBudget().ifPresent(this::retryBudget);
+        properties.carbonIntensityStalenessThreshold().ifPresent(this::stalenessThreshold);
+        properties.carbonIntensityRecoveryBudget().ifPresent(this::recoveryBudget);
     }
 
     public SchedulerConfigBuilder startMode(SchedulerConfig.StartMode startMode) {
@@ -117,6 +147,75 @@ public class SchedulerConfigBuilder {
         return this;
     }
 
+    /**
+     * @param maxAttempts maximum number of attempts for a transient
+     *        carbon-intensity API call, including the first
+     * @return this builder
+     */
+    public SchedulerConfigBuilder retryMaxAttempts(Integer maxAttempts) {
+        Assert.notNull(maxAttempts, "retryMaxAttempts cannot be null");
+        Assert.isTrue(maxAttempts >= 1, "retryMaxAttempts must be at least 1");
+        this.retryMaxAttempts = maxAttempts;
+        return this;
+    }
+
+    /**
+     * @param initialBackoff delay before the first retry of a failed
+     *        carbon-intensity API call
+     * @return this builder
+     */
+    public SchedulerConfigBuilder retryInitialBackoff(Duration initialBackoff) {
+        Assert.notNull(initialBackoff, "retryInitialBackoff cannot be null");
+        this.retryInitialBackoff = initialBackoff;
+        return this;
+    }
+
+    /**
+     * @param backoffMultiplier factor each subsequent retry delay is
+     *        multiplied by
+     * @return this builder
+     */
+    public SchedulerConfigBuilder retryBackoffMultiplier(Double backoffMultiplier) {
+        Assert.notNull(backoffMultiplier, "retryBackoffMultiplier cannot be null");
+        Assert.isTrue(backoffMultiplier >= 1.0, "retryBackoffMultiplier must be at least 1.0");
+        this.retryBackoffMultiplier = backoffMultiplier;
+        return this;
+    }
+
+    /**
+     * @param budget total wall-clock time a single carbon-intensity API call
+     *        may spend retrying
+     * @return this builder
+     */
+    public SchedulerConfigBuilder retryBudget(Duration budget) {
+        Assert.notNull(budget, "retryBudget cannot be null");
+        this.retryBudget = budget;
+        return this;
+    }
+
+    /**
+     * @param threshold maximum age of a cached carbon-intensity value before
+     *        it's no longer reused
+     * @return this builder
+     */
+    public SchedulerConfigBuilder stalenessThreshold(Duration threshold) {
+        Assert.notNull(threshold, "stalenessThreshold cannot be null");
+        this.stalenessThreshold = threshold;
+        return this;
+    }
+
+    /**
+     * @param budget total wall-clock time the background recovery poller may
+     *        spend trying to recover
+     * @return this builder
+     */
+    public SchedulerConfigBuilder recoveryBudget(Duration budget) {
+        Assert.notNull(budget, "recoveryBudget cannot be null");
+        Assert.isTrue(!budget.isZero() && !budget.isNegative(), "recoveryBudget must be positive");
+        this.recoveryBudget = budget;
+        return this;
+    }
+
     public SchedulerConfig build() {
         var schedulerConfig = new SchedulerConfig();
         schedulerConfig.setEnabled(enabled);
@@ -133,6 +232,12 @@ public class SchedulerConfigBuilder {
                     new CarbonIntensityApiConfig.Builder()
                             .apiKey(apiKey)
                             .apiUrl(apiUrl)
+                            .retryMaxAttempts(retryMaxAttempts)
+                            .retryInitialBackoff(retryInitialBackoff)
+                            .retryBackoffMultiplier(retryBackoffMultiplier)
+                            .retryBudget(retryBudget)
+                            .stalenessThreshold(stalenessThreshold)
+                            .recoveryBudget(recoveryBudget)
                             .build());
         }
         return schedulerConfig;

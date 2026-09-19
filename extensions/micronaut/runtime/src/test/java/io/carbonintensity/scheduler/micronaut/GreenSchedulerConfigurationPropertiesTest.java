@@ -42,13 +42,19 @@ class GreenSchedulerConfigurationPropertiesTest {
 
     @Test
     void customPropertiesAreBound() {
-        Map<String, Object> customProperties = Map.of(
-                "green-scheduler.start-mode", "HALTED",
-                "green-scheduler.job-executors", 4,
-                "green-scheduler.overdue-grace-period", "PT5S",
-                "green-scheduler.shutdown-grace-period", "PT10S",
-                "green-scheduler.api-url", "https://example.invalid/api",
-                "green-scheduler.api-key", "test-api-key");
+        Map<String, Object> customProperties = Map.ofEntries(
+                Map.entry("green-scheduler.start-mode", "HALTED"),
+                Map.entry("green-scheduler.job-executors", 4),
+                Map.entry("green-scheduler.overdue-grace-period", "PT5S"),
+                Map.entry("green-scheduler.shutdown-grace-period", "PT10S"),
+                Map.entry("green-scheduler.api-url", "https://example.invalid/api"),
+                Map.entry("green-scheduler.api-key", "test-api-key"),
+                Map.entry("green-scheduler.carbon-intensity-retry-max-attempts", 5),
+                Map.entry("green-scheduler.carbon-intensity-retry-initial-backoff", "PT0.5S"),
+                Map.entry("green-scheduler.carbon-intensity-retry-backoff-multiplier", 2.5),
+                Map.entry("green-scheduler.carbon-intensity-retry-budget", "PT3S"),
+                Map.entry("green-scheduler.carbon-intensity-staleness-threshold", "PT6H"),
+                Map.entry("green-scheduler.carbon-intensity-recovery-budget", "PT15M"));
 
         try (ApplicationContext context = ApplicationContext.run(customProperties)) {
             GreenSchedulerConfigurationProperties properties = context
@@ -60,6 +66,12 @@ class GreenSchedulerConfigurationPropertiesTest {
             assertThat(properties.getShutdownGracePeriod()).isEqualTo(Duration.ofSeconds(10));
             assertThat(properties.getApiUrl()).isEqualTo("https://example.invalid/api");
             assertThat(properties.getApiKey()).isEqualTo("test-api-key");
+            assertThat(properties.getCarbonIntensityRetryMaxAttempts()).isEqualTo(5);
+            assertThat(properties.getCarbonIntensityRetryInitialBackoff()).isEqualTo(Duration.ofMillis(500));
+            assertThat(properties.getCarbonIntensityRetryBackoffMultiplier()).isEqualTo(2.5);
+            assertThat(properties.getCarbonIntensityRetryBudget()).isEqualTo(Duration.ofSeconds(3));
+            assertThat(properties.getCarbonIntensityStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+            assertThat(properties.getCarbonIntensityRecoveryBudget()).isEqualTo(Duration.ofMinutes(15));
 
             SchedulerConfig config = context.getBean(SchedulerConfig.class);
             assertThat(config.getStartMode()).isEqualTo(SchedulerConfig.StartMode.HALTED);

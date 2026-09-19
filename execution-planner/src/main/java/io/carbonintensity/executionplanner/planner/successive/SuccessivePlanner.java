@@ -63,9 +63,36 @@ public class SuccessivePlanner implements CarbonIntensityPlanner<SuccessivePlann
         this.maxConcurrentPerSlot = maxConcurrentPerSlot;
     }
 
+    /**
+     * @return {@code false} when {@code constraints} is {@code null}, or when no
+     *         genuine carbon-intensity data (live or a still-fresh last-known
+     *         value) is available for the next candidate day - in which case the
+     *         caller falls back to its always-available fallback route (plain
+     *         interval between the configured min/max gap), instead of this
+     *         planner returning a fabricated "greenest" slot.
+     */
     @Override
     public boolean canSchedule(SuccessivePlanningConstraints constraints) {
-        return constraints != null;
+        return constraints != null
+                && dataFetcher.fetchCarbonIntensity(buildDayPeriod(constraints)).hasData();
+    }
+
+    /**
+     * The carbon-intensity period covering the day the next candidate slot falls
+     * in: starting at the last execution (or the initial start time, before the
+     * first run) and spanning 24 hours.
+     *
+     * @param constraints the planning constraints to derive the day period from
+     * @return the 24-hour carbon-intensity period covering the next candidate day
+     */
+    private static ZonedCarbonIntensityPeriod buildDayPeriod(SuccessivePlanningConstraints constraints) {
+        ZonedDateTime dayStart = constraints.getLastExecutionTime() != null ? constraints.getLastExecutionTime()
+                : constraints.getInitialStartTime();
+        return new ZonedCarbonIntensityPeriod.Builder()
+                .withStartTime(dayStart)
+                .withEndTime(dayStart.plusDays(1))
+                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
+                .build();
     }
 
     @Override
@@ -82,13 +109,7 @@ public class SuccessivePlanner implements CarbonIntensityPlanner<SuccessivePlann
             we = constraints.getLastExecutionTime().plus(constraints.getMaximumGap());
         }
 
-        ZonedDateTime dayStart = constraints.getLastExecutionTime() != null ? constraints.getLastExecutionTime() : ws;
-        var zonedPeriod = new ZonedCarbonIntensityPeriod.Builder()
-                .withStartTime(dayStart)
-                .withEndTime(dayStart.plusDays(1))
-                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
-                .build();
-        CarbonIntensity carbonIntensity = dataFetcher.fetchCarbonIntensity(zonedPeriod);
+        CarbonIntensity carbonIntensity = dataFetcher.fetchCarbonIntensity(buildDayPeriod(constraints));
 
         SingleJobStrategy strategy = new SingleJobStrategy();
 
