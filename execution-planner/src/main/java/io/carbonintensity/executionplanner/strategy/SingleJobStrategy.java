@@ -45,12 +45,14 @@ public class SingleJobStrategy implements PlanningStrategy {
 
         Timeslot best = ranked.get(0);
         if (best.carbonIntensity() == null) {
-            // Every candidate in the window was a data gap (CIIO-475): still returned, since a fixed/gap
-            // window is a hard promise the caller has to honor either way, but flagged here so it's visible
-            // in logs that no real carbon-intensity data actually backed this pick.
+            // Every candidate in the window was a data gap: still
+            // returned, since a fixed/gap window is a hard promise the
+            // caller has to honor either way, but flagged here so it's
+            // visible in logs that no real carbon-intensity data actually
+            // backed this pick.
             log.warn("No real carbon-intensity data available for {} job between {} - {}; returning {} anyway "
                     + "as the best available slot", duration, ws, we, best.start());
-        } else {
+        } else if (log.isDebugEnabled()) {
             log.debug("Found best timeslot of {} job between {} - {} at {} (CI: {})", duration, ws, we, best.start(),
                     best.carbonIntensity());
         }
@@ -62,10 +64,12 @@ public class SingleJobStrategy implements PlanningStrategy {
             CarbonIntensity carbonIntensity) {
         // create timeslots and calculate carbon intensity
         List<Timeslot> timeslots = new ArrayList<>(getTimeslots(ws, we, duration, resolution, carbonIntensity));
-        // Stable sort: on equal carbon intensity, the chronologically first slot stays first. A null
-        // carbonIntensity (a genuine data gap, see Timeslot#carbonIntensity) sorts last - a slot with no real
-        // data can never be "the greenest", and CIIO-475 was exactly this: a data gap silently outranking real,
-        // non-zero readings because it was miscomputed as an actual zero.
+        // Stable sort: on equal carbon intensity, the chronologically
+        // first slot stays first. A null carbonIntensity (a genuine data
+        // gap, see Timeslot#carbonIntensity) sorts last - a slot with no
+        // real data can never be "the greenest"; a data gap must never
+        // silently outrank real, non-zero readings by being miscomputed
+        // as an actual zero.
         timeslots.sort(Comparator.comparing(Timeslot::carbonIntensity, Comparator.nullsLast(Comparator.naturalOrder())));
         return timeslots;
     }
