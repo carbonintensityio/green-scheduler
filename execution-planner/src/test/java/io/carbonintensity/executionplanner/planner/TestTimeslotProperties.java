@@ -39,8 +39,9 @@ class TestTimeslotProperties {
     private static final ZoneId AMSTERDAM = ZoneId.of("Europe/Amsterdam");
 
     // getTimeslots doesn't consult any carbon intensity data to decide how many slots to generate or where they
-    // start - an empty CarbonIntensity (no data points) keeps calculateCarbonIntensity a no-op (BigDecimal.ZERO),
-    // so the property below can focus purely on the slot-count/start-time invariant.
+    // start - an empty CarbonIntensity (no data points) makes every generated slot a data gap (null
+    // carbonIntensity, see CIIO-475), so the property below can focus purely on the slot-count/start-time
+    // invariant.
     private static final CarbonIntensity EMPTY_CARBON_INTENSITY = new CarbonIntensity();
 
     private static final Arbitrary<ZonedDateTime> WINDOW_STARTS = size -> Gen.choose(0L, 4L * 365 * 24 * 3600)

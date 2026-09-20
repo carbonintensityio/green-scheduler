@@ -195,6 +195,49 @@ class TestFixedWindowPlanner {
         assertThat(timeC).isEqualTo(ws.plusHours(3));
     }
 
+    /**
+     * CIIO-475: in the pilot, every single {@code fixedWindow()} fire reported {@code intensityValue: 0.0} -
+     * literally the window's own start, every day, for every zone - while {@code successive()} jobs in the
+     * same deployment showed plausible, varying values. The root cause was in {@link Timeslot}, shared by
+     * both planners: its old candidate-vs-period overlap filter was {@code contains(start) || contains(end)},
+     * which reports a "hit" whenever a candidate's exclusive end merely touches a period's start - even
+     * though the actual overlap is zero seconds. That "hit" was then computed as a genuine intensity of
+     * exactly zero (indistinguishable from a real zero reading), rather than "no data here".
+     * <p>
+     * Reproduced here exactly as it manifests for {@code FixedWindowPlanner}: a 4-hour window whose start is
+     * one hour <em>before</em> the earliest carbon-intensity data available, with real, unique, non-zero
+     * hourly values thereafter. Before the CIIO-475 fix, the window's own start won outright (0 beats any
+     * positive value); after the fix, that candidate is correctly treated as a data gap and excluded, so the
+     * genuinely greenest real slot wins.
+     */
+    @Test
+    void aWindowStartingBeforeAnyRealDataMustNotWinWithAFabricatedZero() {
+        CarbonIntensity carbonIntensity = new CarbonIntensity();
+        carbonIntensity.setZone("NL");
+        carbonIntensity.setResolution(Duration.ofHours(1));
+        carbonIntensity.setStart(Instant.parse("2026-09-17T00:00:00Z"));
+        carbonIntensity.setData(List.of(
+                new BigDecimal("10"), // 00:00 - the actual greenest real slot
+                new BigDecimal("20"), // 01:00
+                new BigDecimal("30"), // 02:00
+                new BigDecimal("40"))); // 03:00
+        carbonIntensity.setEnd(Instant.parse("2026-09-17T04:00:00Z"));
+        when(carbonIntensityDataFetcher.fetchCarbonIntensity(any())).thenReturn(carbonIntensity);
+
+        // Mirrors nl-fixed-window in the pilot: a 4-hour window, 1-hour job duration (matching
+        // FixedWindowPlanner's hardcoded 1-hour SingleJobStrategy step) - here starting exactly one hour
+        // before the earliest data point.
+        ZonedDateTime ws = ZonedDateTime.parse("2026-09-16T23:00:00Z");
+        ZonedDateTime we = ws.plusHours(4);
+        FixedWindowPlanningConstraints constraints = constraintsFor("nl-fixed-window", ws, we, Duration.ofHours(1));
+
+        ZonedDateTime chosen = defaultCarbonIntensityScheduler.getNextExecutionTime(constraints);
+
+        // The bug: chosen == ws (2026-09-16T23:00Z) with a fabricated intensity of exactly zero.
+        // The fix: the genuinely greenest real slot (00:00Z, value 10) wins instead.
+        assertThat(chosen).isEqualTo(ZonedDateTime.parse("2026-09-17T00:00:00Z"));
+    }
+
     @Test
     void shouldStandardSchedule() {
         final var parser = new CarbonIntensityJsonParser();

@@ -1,12 +1,13 @@
 package io.carbonintensity.executionplanner.planner;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 
@@ -17,6 +18,12 @@ import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 public class Timeslot {
     ZonedDateTime start;
     ZonedDateTime end;
+    /**
+     * {@code null} when no {@link CarbonIntensityPeriod} genuinely
+     * overlapped this slot - a data gap, not a zero reading. See
+     * {@link CarbonIntensityPeriod#overlaps} for why that distinction
+     * matters.
+     */
     BigDecimal carbonIntensity;
 
     public Timeslot(ZonedDateTime start, ZonedDateTime end, BigDecimal carbonIntensity) {
@@ -33,6 +40,11 @@ public class Timeslot {
         return end;
     }
 
+    /**
+     * @return the carbon-intensity value for this slot, or {@code null}
+     *         for a data gap - see {@link #carbonIntensity the field
+     *         javadoc}
+     */
     public BigDecimal carbonIntensity() {
         return carbonIntensity;
     }
@@ -57,20 +69,37 @@ public class Timeslot {
 
         while (!s.isAfter(we)) { // allow equal for 0 windows
             ZonedDateTime e = s.plus(timeslotDuration);
-            timeslots.add(new Timeslot(s, e, calculateCarbonIntensity(periods, s, e)));
+            timeslots.add(new Timeslot(s, e, calculateCarbonIntensity(periods, s, e).orElse(null)));
             s = s.plus(resolution);
         }
         return timeslots;
     }
 
-    public static BigDecimal calculateCarbonIntensity(List<CarbonIntensityPeriod> carbonIntensityInstants, ZonedDateTime start,
-            ZonedDateTime end) {
-        // find carbon intensities.
+    /**
+     * @param carbonIntensityInstants candidate periods to search
+     * @param start start of the candidate slot, inclusive
+     * @param end end of the candidate slot, exclusive
+     * @return summed contribution of every genuinely overlapping period,
+     *         or {@link Optional#empty()} for a real data gap
+     */
+    public static Optional<BigDecimal> calculateCarbonIntensity(List<CarbonIntensityPeriod> carbonIntensityInstants,
+            ZonedDateTime start, ZonedDateTime end) {
+        Instant startInstant = start.toInstant();
+        Instant endInstant = end.toInstant();
         return carbonIntensityInstants.stream()
-                .filter(m -> m.contains(start.toInstant()) || m.contains(end.toInstant()))
+                .filter(ci -> ci.overlaps(startInstant, endInstant))
                 .map(ci -> calculateCarbonIntensity(start, end, ci))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal::add);
     }
+
+    /**
+     * Precision used for the partial-period division in {@link #prorate}.
+     * Deliberately generous (16 significant digits) rather than the
+     * dividend's own scale: see {@link #prorate}'s Javadoc for why the
+     * naive 2-arg {@code divide(divisor, RoundingMode)} silently
+     * fabricates a zero here.
+     */
+    private static final MathContext PRORATION_PRECISION = MathContext.DECIMAL64;
 
     private static BigDecimal calculateCarbonIntensity(ZonedDateTime start, ZonedDateTime end, CarbonIntensityPeriod ci) {
         Instant ciStart = ci.moment();
@@ -88,17 +117,37 @@ public class Timeslot {
             } else {
                 secsInCiPeriod = Duration.between(start.toInstant(), ciEnd).getSeconds();
             }
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            return prorate(ci, secsInCiPeriod);
         }
         //job ends in or on ci window, but does not start in it
         if (end.toInstant().compareTo(ciStart) >= 0 && end.toInstant().compareTo(ciEnd) <= 0) {
             long secsInCiPeriod = Duration.between(ciStart, end.toInstant()).getSeconds();
-            return ci.value().divide(BigDecimal.valueOf(ci.resolution().getSeconds()), RoundingMode.HALF_EVEN)
-                    .multiply(BigDecimal.valueOf(secsInCiPeriod));
+            return prorate(ci, secsInCiPeriod);
         }
 
-        return BigDecimal.ZERO;
+        // Unreachable: the caller only invokes this method for a ci that
+        // CarbonIntensityPeriod#overlaps already confirmed genuinely
+        // overlaps [start, end) (start < ciEnd && ciStart < end), and the
+        // three branches above are exhaustive for every such overlap
+        // (candidate contains ci, candidate starts inside ci, or candidate
+        // ends inside ci). A silent BigDecimal.ZERO here would be exactly
+        // the kind of fabricated-zero bug this class exists to prevent -
+        // fail loudly instead.
+        throw new IllegalStateException(
+                "Unreachable: CarbonIntensityPeriod.overlaps() reported an overlap that calculateCarbonIntensity "
+                        + "could not classify - candidate=[" + start + "," + end + "), period=[" + ciStart + "," + ciEnd + ")");
+    }
+
+    /**
+     * @param ci the period being prorated
+     * @param coveredSeconds seconds of {@code ci}'s own resolution that
+     *        the candidate slot actually covers
+     * @return {@code ci}'s value scaled to that covered fraction. Multiplies
+     *         before dividing - see {@link #PRORATION_PRECISION}'s Javadoc.
+     */
+    private static BigDecimal prorate(CarbonIntensityPeriod ci, long coveredSeconds) {
+        return ci.value().multiply(BigDecimal.valueOf(coveredSeconds))
+                .divide(BigDecimal.valueOf(ci.resolution().getSeconds()), PRORATION_PRECISION);
     }
 
     @Override

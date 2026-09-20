@@ -83,6 +83,17 @@ public class CarbonIntensityPeriod implements Comparable<CarbonIntensityPeriod> 
         return point.compareTo(instant) >= 0 && point.isBefore(instant.plus(resolution));
     }
 
+    /**
+     * @param candidateStart candidate interval start, inclusive
+     * @param candidateEnd candidate interval end, exclusive
+     * @return whether the two intervals genuinely overlap, not merely
+     *         touch at a zero-duration boundary
+     */
+    public boolean overlaps(Instant candidateStart, Instant candidateEnd) {
+        Instant periodEnd = instant.plus(resolution);
+        return candidateStart.isBefore(periodEnd) && instant.isBefore(candidateEnd);
+    }
+
     @Override
     public String toString() {
         return "CarbonIntensityMoment{" +
