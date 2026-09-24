@@ -2,6 +2,9 @@ package io.carbonintensity.scheduler.quarkus.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import jakarta.enterprise.inject.Produces;
@@ -15,7 +18,6 @@ import io.carbonintensity.executionplanner.runtime.impl.ZonedCarbonIntensityPeri
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 import io.carbonintensity.scheduler.GreenScheduled;
 import io.carbonintensity.scheduler.Scheduler;
-import io.carbonintensity.scheduler.runtime.impl.rest.CarbonIntensityFileApi;
 import io.quarkus.test.QuarkusUnitTest;
 
 public class CustomCarbonIntensityApiTest {
@@ -46,11 +48,22 @@ public class CustomCarbonIntensityApiTest {
         }
     }
 
+    /**
+     * A trivial, self-contained test double that just proves a custom {@link CarbonIntensityApi} bean gets
+     * picked up - it does not need to be realistic. It no longer delegates to the bundled fallback dataset
+     * (removed as part of CIIO-470).
+     */
     static class CustomCarbonIntensityApi implements CarbonIntensityApi {
 
         @Override
         public CompletableFuture<CarbonIntensity> getCarbonIntensity(ZonedCarbonIntensityPeriod zonedPeriod) {
-            return new CarbonIntensityFileApi().getCarbonIntensity(zonedPeriod);
+            var carbonIntensity = new CarbonIntensity();
+            carbonIntensity.setZone(zonedPeriod.getZone());
+            carbonIntensity.setStart(zonedPeriod.getStartTime().toInstant());
+            carbonIntensity.setEnd(zonedPeriod.getEndTime().toInstant());
+            carbonIntensity.setResolution(Duration.between(zonedPeriod.getStartTime(), zonedPeriod.getEndTime()));
+            carbonIntensity.setData(List.of(BigDecimal.valueOf(42)));
+            return CompletableFuture.completedFuture(carbonIntensity);
         }
 
         @Override
