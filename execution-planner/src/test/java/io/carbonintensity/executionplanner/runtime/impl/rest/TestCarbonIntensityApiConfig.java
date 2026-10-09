@@ -1,7 +1,9 @@
 package io.carbonintensity.executionplanner.runtime.impl.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Duration;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class TestCarbonIntensityApiConfig {
 
@@ -62,6 +65,75 @@ class TestCarbonIntensityApiConfig {
                 .apiKey(null)
                 .apiUrl("baseUrl")
                 .build().isEnabled()).isFalse();
+    }
+
+    @Test
+    void whenRetryAndStalenessFieldsAreNotSet_thenDefaultsFromCIIO470Apply() {
+        var config = builder.build();
+
+        assertThat(config.getRetryMaxAttempts()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_MAX_ATTEMPTS)
+                .isEqualTo(3);
+        assertThat(config.getRetryInitialBackoff()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_INITIAL_BACKOFF)
+                .isEqualTo(Duration.ofMillis(300));
+        assertThat(config.getRetryBackoffMultiplier()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_BACKOFF_MULTIPLIER)
+                .isEqualTo(3.0);
+        assertThat(config.getRetryBudget()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RETRY_BUDGET)
+                .isEqualTo(Duration.ofSeconds(2));
+        assertThat(config.getStalenessThreshold()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_STALENESS_THRESHOLD)
+                .isEqualTo(Duration.ofHours(4));
+    }
+
+    @Test
+    void whenRetryAndStalenessFieldsAreExplicitlySet_thenTheyOverrideTheDefaults() {
+        var config = builder
+                .retryMaxAttempts(1)
+                .retryInitialBackoff(Duration.ofMillis(50))
+                .retryBackoffMultiplier(2.0)
+                .retryBudget(Duration.ofMillis(500))
+                .stalenessThreshold(Duration.ofHours(6))
+                .build();
+
+        assertThat(config.getRetryMaxAttempts()).isEqualTo(1);
+        assertThat(config.getRetryInitialBackoff()).isEqualTo(Duration.ofMillis(50));
+        assertThat(config.getRetryBackoffMultiplier()).isEqualTo(2.0);
+        assertThat(config.getRetryBudget()).isEqualTo(Duration.ofMillis(500));
+        assertThat(config.getStalenessThreshold()).isEqualTo(Duration.ofHours(6));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { 0, -1 })
+    void whenRetryMaxAttemptsIsLessThanOne_thenThrowException(int invalid) {
+        assertThrows(IllegalArgumentException.class, () -> builder.retryMaxAttempts(invalid));
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = { 0.0, 0.99, -1.0 })
+    void whenRetryBackoffMultiplierIsLessThanOne_thenThrowException(double invalid) {
+        assertThrows(IllegalArgumentException.class, () -> builder.retryBackoffMultiplier(invalid));
+    }
+
+    @Test
+    void whenRecoveryBudgetIsNotSet_thenDefaultOfTenMinutesApplies() {
+        var config = builder.build();
+
+        assertThat(config.getRecoveryBudget()).isEqualTo(CarbonIntensityApiConfig.DEFAULT_RECOVERY_BUDGET)
+                .isEqualTo(Duration.ofMinutes(10));
+    }
+
+    @Test
+    void whenRecoveryBudgetIsExplicitlySet_thenItOverridesTheDefault() {
+        var config = builder
+                .recoveryBudget(Duration.ofMinutes(20))
+                .build();
+
+        assertThat(config.getRecoveryBudget()).isEqualTo(Duration.ofMinutes(20));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "PT0S", "PT-1S" })
+    void whenRecoveryBudgetIsZeroOrNegative_thenThrowException(String durationText) {
+        var invalid = Duration.parse(durationText);
+        assertThrows(IllegalArgumentException.class, () -> builder.recoveryBudget(invalid));
     }
 
 }

@@ -65,20 +65,24 @@ public class FixedWindowPlanner implements CarbonIntensityPlanner<FixedWindowPla
         this.maxConcurrentPerSlot = maxConcurrentPerSlot;
     }
 
+    /**
+     * @return {@code false} when {@code constraints} is {@code null}, or when no
+     *         genuine carbon-intensity data (live or a still-fresh last-known
+     *         value) is available for the window - in which case the caller
+     *         falls back to its always-available fallback route (fixed cron
+     *         midpoint), instead of this planner returning a fabricated
+     *         "greenest" slot.
+     */
     @Override
     public boolean canSchedule(FixedWindowPlanningConstraints constraints) {
-        return constraints != null;
+        return constraints != null
+                && dataFetcher.fetchCarbonIntensity(buildPeriod(constraints)).hasData();
     }
 
     @Override
     public ZonedDateTime getNextExecutionTime(FixedWindowPlanningConstraints constraints) {
 
-        final var period = new ZonedCarbonIntensityPeriod.Builder()
-                .withStartTime(constraints.getStart())
-                .withEndTime(constraints.getEnd())
-                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
-                .build();
-        final var carbonIntensity = dataFetcher.fetchCarbonIntensity(period);
+        final var carbonIntensity = dataFetcher.fetchCarbonIntensity(buildPeriod(constraints));
 
         final var strategy = new SingleJobStrategy(Duration.ofHours(1));
 
@@ -89,6 +93,14 @@ public class FixedWindowPlanner implements CarbonIntensityPlanner<FixedWindowPla
         }
 
         return pickTimeslot(strategy, constraints, carbonIntensity);
+    }
+
+    private static ZonedCarbonIntensityPeriod buildPeriod(FixedWindowPlanningConstraints constraints) {
+        return new ZonedCarbonIntensityPeriod.Builder()
+                .withStartTime(constraints.getStart())
+                .withEndTime(constraints.getEnd())
+                .withCarbonIntensityZone(constraints.getCarbonIntensityZone())
+                .build();
     }
 
     private ZonedDateTime pickTimeslot(SingleJobStrategy strategy, FixedWindowPlanningConstraints constraints,
