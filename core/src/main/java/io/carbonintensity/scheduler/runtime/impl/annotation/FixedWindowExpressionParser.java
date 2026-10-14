@@ -1,6 +1,7 @@
 package io.carbonintensity.scheduler.runtime.impl.annotation;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -22,7 +23,8 @@ public class FixedWindowExpressionParser {
     private FixedWindowExpressionParser() {
     }
 
-    public static Optional<FixedWindowConstraints> parse(String expression, Clock clock, ZoneId timeZoneId) {
+    public static Optional<FixedWindowConstraints> parse(String expression, Clock clock, ZoneId timeZoneId,
+            Duration overdueGracePeriod) {
         if (expression == null || expression.isEmpty()) {
             return Optional.empty();
         }
@@ -36,8 +38,9 @@ public class FixedWindowExpressionParser {
                 LocalTime endTime = parseTime(parts[1]);
 
                 ZonedDateTime zonedStartTime = getZonedStartDateTimeForNextExecutionWindow(clock, timeZoneId, startTime,
-                        endTime);
-                ZonedDateTime zonedEndTime = getZonedEndDateTimeForNextExecutionWindow(clock, timeZoneId, startTime, endTime);
+                        endTime, overdueGracePeriod);
+                ZonedDateTime zonedEndTime = getZonedEndDateTimeForNextExecutionWindow(clock, timeZoneId, startTime, endTime,
+                        overdueGracePeriod);
 
                 return Optional.of(new FixedWindowConstraints(zonedStartTime, zonedEndTime));
             } catch (DateTimeParseException e) {
@@ -54,15 +57,33 @@ public class FixedWindowExpressionParser {
     }
 
     public static ZonedDateTime getZonedStartDateTimeForNextExecutionWindow(Clock clock, ZoneId timeZoneId, LocalTime startTime,
-            LocalTime endTime) {
+            LocalTime endTime, Duration overdueGracePeriod) {
         Clock clockForTimeZoneId = clock.withZone(timeZoneId);
         LocalDate localDateForStartTime = LocalDate.now(clockForTimeZoneId);
         boolean nowIsNextDayBeforeEndWindow = isOvernightWindow(startTime, endTime)
                 && isWithinLastNightWindow(clockForTimeZoneId, startTime, endTime);
         if (nowIsNextDayBeforeEndWindow) {
             localDateForStartTime = localDateForStartTime.minusDays(1);
+        } else if (todaysWindowHasAlreadyEnded(clockForTimeZoneId, startTime, endTime, overdueGracePeriod)) {
+            localDateForStartTime = localDateForStartTime.plusDays(1);
         }
         return resolveWindowStart(localDateForStartTime, startTime, timeZoneId);
+    }
+
+    /**
+     * A same-day window whose end time (plus its grace period - a job invoked just after the window closed, but
+     * still inside the grace period, is still using today's window) is already behind "now" needs the next
+     * occurrence to be tomorrow's, not today's already-closed one - only relevant for a non-overnight window,
+     * since an overnight one is already handled by {@link #isWithinLastNightWindow}.
+     */
+    private static boolean todaysWindowHasAlreadyEnded(Clock clockForTimeZoneId, LocalTime startTime, LocalTime endTime,
+            Duration overdueGracePeriod) {
+        if (isOvernightWindow(startTime, endTime)) {
+            return false;
+        }
+        ZonedDateTime todaysEndPlusGrace = ZonedDateTime.of(LocalDate.now(clockForTimeZoneId), endTime,
+                clockForTimeZoneId.getZone()).plus(overdueGracePeriod);
+        return !ZonedDateTime.now(clockForTimeZoneId).isBefore(todaysEndPlusGrace);
     }
 
     /**
@@ -85,12 +106,12 @@ public class FixedWindowExpressionParser {
     }
 
     public static ZonedDateTime getZonedEndDateTimeForNextExecutionWindow(Clock clock, ZoneId timeZoneId, LocalTime startTime,
-            LocalTime endTime) {
+            LocalTime endTime, Duration overdueGracePeriod) {
         Clock clockForTimeZoneId = clock.withZone(timeZoneId);
         LocalDate localDateForEndTime = LocalDate.now(clockForTimeZoneId);
         boolean endIsNextDay = isOvernightWindow(startTime, endTime)
                 && !isWithinLastNightWindow(clockForTimeZoneId, startTime, endTime);
-        if (endIsNextDay) {
+        if (endIsNextDay || todaysWindowHasAlreadyEnded(clockForTimeZoneId, startTime, endTime, overdueGracePeriod)) {
             localDateForEndTime = localDateForEndTime.plusDays(1);
         }
         return ZonedDateTime.of(localDateForEndTime, endTime, timeZoneId);

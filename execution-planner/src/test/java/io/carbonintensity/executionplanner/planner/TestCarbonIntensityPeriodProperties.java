@@ -12,6 +12,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
+import io.carbonintensity.executionplanner.testsupport.CarbonIntensityGens;
 import io.vavr.test.Arbitrary;
 import io.vavr.test.Gen;
 import io.vavr.test.Property;
@@ -26,16 +27,8 @@ import io.vavr.test.Property;
  */
 class TestCarbonIntensityPeriodProperties {
 
-    // Arbitrary start instants spread across a multi-year range, so generated periods land on a variety of
-    // moments rather than always near the epoch.
-    private static final Gen<Instant> STARTS_GEN = Gen.choose(0L, 4L * 365 * 24 * 60 * 60)
-            .map(Instant::ofEpochSecond);
-    private static final Arbitrary<Instant> STARTS = size -> STARTS_GEN;
-
-    // Resolutions actually used in practice (quarter-hourly, half-hourly, hourly).
-    private static final Gen<Duration> RESOLUTIONS_GEN = Gen.choose(Duration.ofMinutes(15), Duration.ofMinutes(30),
-            Duration.ofHours(1));
-    private static final Arbitrary<Duration> RESOLUTIONS = size -> RESOLUTIONS_GEN;
+    private static final Arbitrary<Instant> STARTS = CarbonIntensityGens.STARTS;
+    private static final Arbitrary<Duration> RESOLUTIONS = CarbonIntensityGens.RESOLUTIONS;
 
     // At least 2 data points, so there is always at least one adjacent pair of periods to check.
     private static final Gen<Integer> DATA_SIZES_GEN = Gen.choose(2, 20);
@@ -83,6 +76,22 @@ class TestCarbonIntensityPeriodProperties {
         assertThat(boundary).isEqualTo(b.moment());
         assertThat(a.contains(boundary)).isFalse();
         assertThat(b.contains(boundary)).isTrue();
+    }
+
+    // CIIO-475: contains(candidateStart) || contains(candidateEnd) - the filter Timeslot#calculateCarbonIntensity
+    // used to select overlapping periods - reported a "hit" whenever a candidate merely touched a period at its
+    // exclusive upper bound, with zero actual overlap. Replaced by CarbonIntensityPeriod#overlaps, a genuine
+    // half-open interval overlap test; see its Javadoc for the full story.
+    @Test
+    void aCandidateTouchingOnlyThePeriodsExclusiveStartDoesNotOverlap() {
+        Instant periodStart = Instant.parse("2026-09-17T00:00:00Z");
+        Duration resolution = Duration.ofHours(1);
+        CarbonIntensityPeriod period = new CarbonIntensityPeriod(periodStart, resolution, BigDecimal.TEN);
+
+        Instant candidateStart = periodStart.minus(Duration.ofHours(1));
+        Instant candidateEnd = periodStart; // touches the period's start exactly, with zero real overlap
+
+        assertThat(period.overlaps(candidateStart, candidateEnd)).isFalse();
     }
 
     // Invariant 1: of(...) always produces contiguous periods, regardless of start instant, resolution or data size.

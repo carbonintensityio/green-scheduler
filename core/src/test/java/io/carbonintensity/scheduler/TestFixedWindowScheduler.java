@@ -106,12 +106,14 @@ class TestFixedWindowScheduler {
         Thread.sleep(SCHEDULER_WAITING_PERIOD); // Sleep a few seconds, according to the schedule, it should not run.
         Assertions.assertThat(cdl.getCount()).isEqualTo(2);
 
-        // shift the clock to 6:16 which within the window but is before the "most green time", so it still not run
-        mutableClock.shift(Duration.ofHours(2));
+        // shift the clock to 5:16 which is within the window but is before the "most green time" (6:15, per the
+        // fallback/nl/europe-amsterdam.json fixture - see CIIO-475 for why this is 6:15 and not 7:15), so it
+        // should still not run
+        mutableClock.shift(Duration.ofHours(1));
         Thread.sleep(SCHEDULER_WAITING_PERIOD); // Sleep a few seconds, according to the schedule, it should not run.
         Assertions.assertThat(cdl.getCount()).isEqualTo(2);
 
-        // shift the clock to 7:16 which is at the "most green time", so it should run
+        // shift the clock to 6:16 which is just after the "most green time", so it should run
         mutableClock.shift(Duration.ofHours(1));
 
         Awaitility.waitAtMost(SCHEDULER_WAITING_PERIOD, TimeUnit.MILLISECONDS)
@@ -743,12 +745,14 @@ class TestFixedWindowScheduler {
         Thread.sleep(SCHEDULER_WAITING_PERIOD); // Sleep a few seconds, according to the schedule, it should not run.
         Assertions.assertThat(cdl.getCount()).isEqualTo(1);
 
-        // shift the clock to 00:16 which within the window but is before the "most green time", so it still not run
-        mutableClock.shift(Duration.ofHours(2));
+        // shift the clock to 23:16 which is within the window but is before the "most green time" (00:15, per the
+        // fallback/nl/europe-amsterdam.json fixture - see CIIO-475 for why this is 00:15 and not 01:15), so it
+        // should still not run
+        mutableClock.shift(Duration.ofHours(1));
         Thread.sleep(SCHEDULER_WAITING_PERIOD); // Sleep a few seconds, according to the schedule, it should not run.
         Assertions.assertThat(cdl.getCount()).isEqualTo(1);
 
-        // shift the clock to 1:16 which is at the "most green time", so it should run
+        // shift the clock to 00:16 which is just after the "most green time", so it should run
         mutableClock.shift(Duration.ofHours(1));
 
         Awaitility.waitAtMost(SCHEDULER_WAITING_PERIOD, TimeUnit.MILLISECONDS)

@@ -77,7 +77,8 @@ public class GreenScheduledAnnotationParser {
         }
     }
 
-    public static PlanningConstraints createConstraints(String identity, GreenScheduled annotation, Clock clock) {
+    public static PlanningConstraints createConstraints(String identity, GreenScheduled annotation, Clock clock,
+            Duration overdueGracePeriod) {
         List<String> validationErrors = GreenScheduledAnnotationValidation.validateAndReturnValidationErrors(annotation);
         if (!validationErrors.isEmpty()) {
             throw new IllegalArgumentException(
@@ -91,7 +92,8 @@ public class GreenScheduledAnnotationParser {
                 .map(ZoneId::of)
                 .orElse(ZoneId.systemDefault());
 
-        final var optionalFixedWindow = FixedWindowExpressionParser.parse(annotation.fixedWindow(), clock, timeZoneId);
+        final var optionalFixedWindow = FixedWindowExpressionParser.parse(annotation.fixedWindow(), clock, timeZoneId,
+                overdueGracePeriod);
         if (optionalFixedWindow.isPresent()) {
             final var fixedWindow = optionalFixedWindow.get();
 

@@ -130,6 +130,62 @@ class TestSuccessiveWindowScheduler {
     }
 
     @Test
+    void getNextFireTimeAndIsOverdueReflectTheMostRecentFireNotJustTheFirstEverSlot() throws InterruptedException {
+        CountDownLatch cdl = new CountDownLatch(1);
+
+        ScheduledInvoker scheduledCountDownInvoker = execution -> {
+            cdl.countDown();
+            return CompletableFuture.completedStage(null);
+        };
+
+        GreenScheduled greenScheduled = AnnotationUtil.newGreenScheduled()
+                .successive("12h 4h 12h")
+                .carbonIntensityZone("NL")
+                .duration("1h")
+                .identity("test")
+                .overdueGracePeriod("PT90S")
+                .timeZone("Europe/Amsterdam")
+                .build();
+
+        ImmutableScheduledMethod immutableScheduledMethod = new ImmutableScheduledMethod(
+                scheduledCountDownInvoker,
+                this.getClass().getName(),
+                "getNextFireTimeAndIsOverdueReflectTheMostRecentFireNotJustTheFirstEverSlot",
+                List.of(greenScheduled));
+
+        MutableClock mutableClock = new MutableClock(
+                Clock.fixed(ZonedDateTime
+                        .of(LocalDateTime.of(LocalDate.of(2024, 6, 1),
+                                LocalTime.of(7, 16)), ZoneId.of("Europe/Amsterdam"))
+                        .toInstant(),
+                        ZoneId.of("UTC")));
+
+        schedulerConfig.setClock(mutableClock);
+        scheduler = new SimpleScheduler(schedulerConfig);
+        scheduler.scheduleMethod(immutableScheduledMethod);
+        mutableClock.getNotifier().register(scheduler);
+        scheduler.start();
+
+        // the greenest slot is at 18:16 - fire it, then jump 20 hours past that (well past the 4-12h gap window,
+        // long enough that the *original, never-advanced* slot would look hours overdue if getNextFireTime()
+        // wrongly kept reporting it instead of the trigger's real, gap-based next slot)
+        mutableClock.shift(Duration.ofHours(11));
+        mutableClock.shift(Duration.ofHours(1));
+        mutableClock.shift(Duration.ofSeconds(1));
+        Awaitility.waitAtMost(SCHEDULER_WAITING_PERIOD, TimeUnit.MILLISECONDS).until(() -> cdl.getCount() == 0);
+
+        mutableClock.shift(Duration.ofHours(20));
+        Trigger trigger = scheduler.getScheduledJob("test");
+
+        Assertions.assertThat(trigger.isOverdue())
+                .as("must not be permanently overdue just because the very first computed slot is long past")
+                .isFalse();
+        Assertions.assertThat(trigger.getNextFireTime())
+                .as("must advance past the last actual fire, not keep reporting the original first-ever slot")
+                .isAfter(trigger.getPreviousFireTime());
+    }
+
+    @Test
     void testSuccessiveWindowScheduler_useCalculatedFallbackInterval() throws InterruptedException {
         CountDownLatch cdl = new CountDownLatch(2);
 

@@ -28,7 +28,7 @@ class GreenScheduledAnnotationParserTest {
                 .build();
 
         PlanningConstraints constraints = GreenScheduledAnnotationParser.createConstraints("testJob", annotation,
-                Clock.systemDefaultZone());
+                Clock.systemDefaultZone(), Duration.ZERO);
 
         assertThat(constraints).isInstanceOf(DefaultFixedWindowPlanningConstraints.class);
         DefaultFixedWindowPlanningConstraints fixedConstraints = (DefaultFixedWindowPlanningConstraints) constraints;
@@ -47,7 +47,8 @@ class GreenScheduledAnnotationParserTest {
         Clock clock = Clock.fixed(now.toInstant(),
                 ZoneId.of("UTC"));
 
-        PlanningConstraints constraints = GreenScheduledAnnotationParser.createConstraints("testJob", annotation, clock);
+        PlanningConstraints constraints = GreenScheduledAnnotationParser.createConstraints("testJob", annotation, clock,
+                Duration.ZERO);
 
         assertThat(constraints).isInstanceOf(DefaultSuccessivePlanningConstraints.class);
         DefaultSuccessivePlanningConstraints successiveConstraints = (DefaultSuccessivePlanningConstraints) constraints;
@@ -65,7 +66,7 @@ class GreenScheduledAnnotationParserTest {
                 .carbonIntensityZone("NL")
                 .build();
 
-        assertThatThrownBy(() -> GreenScheduledAnnotationParser.createConstraints("testJob", annotation, null))
+        assertThatThrownBy(() -> GreenScheduledAnnotationParser.createConstraints("testJob", annotation, null, Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Found 1 validation error while creating GreenScheduled constraints for testJob: \n" +
                         "Duration must be specified when fixedWindow is specified");

@@ -31,7 +31,15 @@
     <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn"/>
     <rule ref="category/java/codestyle.xml/ClassNamingConventions"/>
     <rule ref="category/java/codestyle.xml/MethodNamingConventions"/>
-    <rule ref="category/java/codestyle.xml/FieldNamingConventions"/>
+    <!-- constantPattern extended to also allow lowercase log/logger: mirrors the same
+         exception already made for Checkstyle's ConstantName. Without it, PMD flags the
+         conventional `private static final Logger log` idiom (18 existing files use it)
+         as a naming-convention violation on every occurrence. -->
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions">
+        <properties>
+            <property name="constantPattern" value="[A-Z][A-Z0-9]*(_[A-Z0-9]+)*|log|logger"/>
+        </properties>
+    </rule>
     <rule ref="category/java/codestyle.xml/FormalParameterNamingConventions"/>
     <rule ref="category/java/codestyle.xml/LocalVariableNamingConventions"/>
 

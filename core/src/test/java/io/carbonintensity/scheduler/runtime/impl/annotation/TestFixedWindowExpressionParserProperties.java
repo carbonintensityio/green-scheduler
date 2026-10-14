@@ -3,6 +3,7 @@ package io.carbonintensity.scheduler.runtime.impl.annotation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -80,9 +81,9 @@ class TestFixedWindowExpressionParserProperties {
                     Clock clock = Clock.fixed(ZonedDateTime.of(now, AMSTERDAM).toInstant(), AMSTERDAM);
 
                     ZonedDateTime start = FixedWindowExpressionParser.getZonedStartDateTimeForNextExecutionWindow(clock,
-                            AMSTERDAM, startTime, endTime);
+                            AMSTERDAM, startTime, endTime, Duration.ZERO);
                     ZonedDateTime end = FixedWindowExpressionParser.getZonedEndDateTimeForNextExecutionWindow(clock,
-                            AMSTERDAM, startTime, endTime);
+                            AMSTERDAM, startTime, endTime, Duration.ZERO);
 
                     return start.isBefore(end);
                 })
@@ -117,9 +118,9 @@ class TestFixedWindowExpressionParserProperties {
         Clock clock = Clock.fixed(ZonedDateTime.of(now, nowTime, AMSTERDAM).toInstant(), AMSTERDAM);
 
         ZonedDateTime start = FixedWindowExpressionParser.getZonedStartDateTimeForNextExecutionWindow(clock, AMSTERDAM,
-                startTime, endTime);
+                startTime, endTime, Duration.ZERO);
         ZonedDateTime end = FixedWindowExpressionParser.getZonedEndDateTimeForNextExecutionWindow(clock, AMSTERDAM,
-                startTime, endTime);
+                startTime, endTime, Duration.ZERO);
 
         assertThat(start).isBefore(end);
     }

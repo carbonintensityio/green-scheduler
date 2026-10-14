@@ -160,7 +160,7 @@ jobs:
 
       - name: Upload result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: result-${{ matrix.framework }}-${{ matrix.line }}-${{ matrix.tier }}-jdk${{ matrix.java }}
           path: results/result.json
@@ -324,7 +324,7 @@ jobs:
 
       - name: Open a PR with the refreshed table
         if: steps.check.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: README.md
           commit-message: "Refresh README's supported-versions table to match the required tier"
