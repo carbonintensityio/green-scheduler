@@ -420,7 +420,8 @@ mvn initialize org.pitest:pitest-maven:mutationCoverage -pl execution-planner -a
 ```
 
 The HTML report lands in `target/pit-reports/`. There is no enforced minimum score (no gate) - use it to spot-check
-whether a high-coverage class's tests actually assert anything meaningful.
+whether a high-coverage class's tests actually assert anything meaningful. Why it isn't a CI gate, the baseline
+scores, and when to revisit that: `docs/adr/0004-mutation-testing-local-only.md`.
 
 **When a finding shows high coverage but a low mutation score, it's almost always one of these three shapes -
 check which one before writing anything:**
