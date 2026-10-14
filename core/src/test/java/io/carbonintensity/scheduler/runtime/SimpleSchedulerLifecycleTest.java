@@ -22,13 +22,13 @@ import io.carbonintensity.scheduler.test.helper.AnnotationUtil;
 import io.carbonintensity.scheduler.test.helper.DisabledDummyCarbonIntensityApi;
 
 /**
- * {@code pause()}/{@code resume()}/{@code isRunning()} had zero coverage at all (CIIO-340,
+ * {@code pause()}/{@code resume()}/{@code isRunning()} had zero coverage at all (PIT
  * NO_COVERAGE mutants) - no existing test ever calls them. These are the scheduler-wide (not
  * per-job) lifecycle operations.
  * <p>
  * This class also covers the per-identity {@code pause(String)}/{@code resume(String)}/
  * {@code isPaused(String)} variants and {@code unscheduleJob(String)}, which need a scheduled
- * task and were originally left for a follow-up (CIIO-340).
+ * task and were originally left for a follow-up.
  */
 class SimpleSchedulerLifecycleTest {
 

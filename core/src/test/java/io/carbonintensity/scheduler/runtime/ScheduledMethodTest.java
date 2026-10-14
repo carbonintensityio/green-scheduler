@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * {@link ScheduledMethod#getMethodDescription()} is only reached indirectly by other tests, none
- * of which inspect the actual string it produces - PIT (CIIO-337) found the "replaced return value
+ * of which inspect the actual string it produces - PIT found the "replaced return value
  * with empty string" mutant survives as a result.
  */
 class ScheduledMethodTest {

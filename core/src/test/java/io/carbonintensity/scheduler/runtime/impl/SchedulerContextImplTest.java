@@ -11,7 +11,7 @@ import io.carbonintensity.scheduler.runtime.ScheduledMethod;
 
 /**
  * {@link SchedulerContextImpl#getScheduledMethods()} is only reached indirectly, never with its
- * result inspected - PIT (CIIO-337) found the "replaced return value with an empty list" mutant
+ * result inspected - PIT found the "replaced return value with an empty list" mutant
  * survives as a result.
  */
 class SchedulerContextImplTest {

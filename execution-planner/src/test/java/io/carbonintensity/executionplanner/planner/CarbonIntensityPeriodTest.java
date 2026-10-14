@@ -13,7 +13,7 @@ import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 
 /**
  * {@link CarbonIntensityPeriod} had no direct test at all - it was only exercised indirectly
- * through {@link TestTimeslot}, which never inspects its own behavior. PIT (CIIO-339) found
+ * through {@link TestTimeslot}, which never inspects its own behavior. PIT found
  * {@code equals}/{@code compareTo} entirely unreached, and every boundary comparison in
  * {@link CarbonIntensityPeriod#contains} survives - existing indirect coverage never places a
  * point exactly on the period's start or end.
@@ -58,7 +58,7 @@ class CarbonIntensityPeriodTest {
         // produces contiguous periods where period[i].moment() + resolution == period[i + 1].moment().
         // If both bounds were inclusive (as an earlier version of this test asserted), that shared
         // boundary instant would be reported as contained by two consecutive periods at once - see
-        // CIIO-366, which found this exact double-inclusive bug via a property test.
+        // TestCarbonIntensityPeriodProperties, which found this exact double-inclusive bug via a property test.
         assertThat(p.contains(START)).as("exactly at the start").isTrue();
         assertThat(p.contains(end)).as("exactly at the end").isFalse();
         assertThat(p.contains(START.minusNanos(1))).as("one ns before the start").isFalse();

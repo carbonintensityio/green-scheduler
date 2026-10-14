@@ -34,7 +34,7 @@ import io.vavr.test.Property;
 
 /**
  * {@code isOverdue()}/{@code getNextFireTime()} had zero test coverage across all four trigger
- * classes nested in {@link SimpleScheduler} (CIIO-340, NO_COVERAGE mutants): {@link SimpleScheduler.CronTrigger},
+ * classes nested in {@link SimpleScheduler} (PIT NO_COVERAGE mutants): {@link SimpleScheduler.CronTrigger},
  * {@link SimpleScheduler.FixedWindowTrigger}, {@link SimpleScheduler.IntervalTrigger} and
  * {@link SimpleScheduler.SuccessiveTrigger}. Each class is exercised directly (these are
  * package-private nested classes, so this test lives in the same package), independently of the
@@ -69,7 +69,7 @@ class TriggerOverdueAndNextFireTimeTest {
 
     // --- CronTrigger ---
 
-    // Property-of-record for CIIO-340: this failed before the fix below, because isOverdue() used
+    // Property-of-record: this failed before the fix below, because isOverdue() used
     // ZonedDateTime.now() (the real system clock) instead of ZonedDateTime.now(this.clock), so it
     // silently ignored whatever Clock was injected into the trigger. Fixed in
     // SimpleScheduler.CronTrigger#isOverdue() by using ZonedDateTime.now(this.clock).

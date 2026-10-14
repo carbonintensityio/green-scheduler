@@ -17,7 +17,7 @@ import io.carbonintensity.scheduler.Trigger;
 
 /**
  * Direct unit test for {@link StatusEmitterInvoker} - it had 100% line coverage from other tests
- * routing through it, but PIT (CIIO-338) found that nothing actually verified the events it's
+ * routing through it, but PIT found that nothing actually verified the events it's
  * responsible for firing: the success event, and the failure path entirely (0% coverage on that
  * branch specifically).
  */

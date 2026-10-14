@@ -17,8 +17,9 @@ import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
  * placing a job's start/end exactly on a carbon-intensity period's boundary. {@link TestTimeslot}
  * covers precision underflow for partial overlaps that end inside a period; these cover each
  * overlap branch (job contains the period, job starts inside it, job ends inside it) and the
- * boundaries where a job touches a period without overlapping it - a data gap, not a zero
- * reading - which PIT (CIIO-336) found unprotected.
+ * boundaries where a job touches a period without overlapping it, which
+ * {@link CarbonIntensityPeriod#overlaps} treats as a data gap ({@code Optional.empty()}), not a
+ * zero reading.
  */
 class TimeslotCalculateCarbonIntensityTest {
 
