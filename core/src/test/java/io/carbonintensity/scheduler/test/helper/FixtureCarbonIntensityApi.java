@@ -1,18 +1,13 @@
-package io.carbonintensity.scheduler.runtime.impl.rest;
+package io.carbonintensity.scheduler.test.helper;
 
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.carbonintensity.executionplanner.runtime.impl.CarbonIntensity;
 import io.carbonintensity.executionplanner.runtime.impl.ZonedCarbonIntensityPeriod;
@@ -21,13 +16,19 @@ import io.carbonintensity.executionplanner.runtime.impl.rest.CarbonIntensityJson
 import io.carbonintensity.executionplanner.spi.CarbonIntensityApi;
 
 /**
- * This implementation gets data from the file system. Each carbonIntensityZone has a directory with a dataset
- * for each timezone.
+ * A deterministic, file-backed {@link CarbonIntensityApi} test double, so scheduling tests can assert
+ * "the greenest slot within this window is at this specific time" against known, fixed values.
+ * <p>
+ * This mirrors the lookup scheme the production code used to have via {@code CarbonIntensityFileApi} and a
+ * bundled dataset under {@code fallback/} - both removed in CIIO-470, because a real deployment silently
+ * substituting fabricated numbers for missing data is a production bug, not a feature. Here, in a test, an
+ * explicit, known-in-advance dataset used to assert scheduling behaviour is exactly the right tool - it is
+ * simply no longer allowed to also be the thing a real REST API failure quietly falls back to. See
+ * {@code CarbonIntensityDataFetcherImpl}'s Javadoc for what a real failure does instead.
  */
-public class CarbonIntensityFileApi implements CarbonIntensityApi {
+public class FixtureCarbonIntensityApi implements CarbonIntensityApi {
 
-    private static final Logger logger = LoggerFactory.getLogger(CarbonIntensityFileApi.class);
-    private static final String BASE_DIRECTORY = "fallback";
+    private static final String BASE_DIRECTORY = "carbon-intensity-fixtures";
     private final CarbonIntensityJsonParser jsonParser = new CarbonIntensityJsonParser();
 
     private static String getTimezone(ZonedDateTime startTime) {
@@ -42,21 +43,19 @@ public class CarbonIntensityFileApi implements CarbonIntensityApi {
     public CompletableFuture<CarbonIntensity> getCarbonIntensity(ZonedCarbonIntensityPeriod zonedPeriod) {
         var zone = zonedPeriod.getZone().toLowerCase();
         var timezone = getTimezone(zonedPeriod.getStartTime());
-        logger.debug("Getting fallback data for carbonIntensityZone {} and timezone {}", zone, timezone);
 
         try {
             var resource = getJsonFileUrl(zone, timezone);
             var carbonIntensity = parseJsonFile(zonedPeriod, resource);
             return CompletableFuture.completedFuture(carbonIntensity);
         } catch (IOException e) {
-            logger.error("Failed to get data", e);
             return CompletableFuture.failedFuture(new CarbonIntensityApiException(e));
         }
     }
 
     @Override
     public boolean isEnabled() {
-        return Files.isDirectory(Paths.get(BASE_DIRECTORY));
+        return true;
     }
 
     private CarbonIntensity parseJsonFile(ZonedCarbonIntensityPeriod zonedPeriod, URL jsonFilePath) throws IOException {
@@ -66,10 +65,8 @@ public class CarbonIntensityFileApi implements CarbonIntensityApi {
     }
 
     private static void enrichData(ZonedCarbonIntensityPeriod zonedPeriod, CarbonIntensity carbonIntensity) {
-        var start = truncateToHours(zonedPeriod.getStartTime());
-        var end = truncateToHours(zonedPeriod.getEndTime());
-        carbonIntensity.setStart(start);
-        carbonIntensity.setEnd(end);
+        carbonIntensity.setStart(truncateToHours(zonedPeriod.getStartTime()));
+        carbonIntensity.setEnd(truncateToHours(zonedPeriod.getEndTime()));
         carbonIntensity.setZone(zonedPeriod.getZone());
     }
 
@@ -85,7 +82,8 @@ public class CarbonIntensityFileApi implements CarbonIntensityApi {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElseThrow(() -> new IOException(
-                        "No matching file found for carbonIntensityZone [" + zone + "] and timezone [" + timezone + "]"));
+                        "No matching fixture file found for carbonIntensityZone [" + zone + "] and timezone [" + timezone
+                                + "]"));
     }
 
     private URL getResource(String resourceName) {

@@ -32,7 +32,7 @@ import io.carbonintensity.scheduler.runtime.ScheduledInvoker;
 import io.carbonintensity.scheduler.runtime.SchedulerConfig;
 import io.carbonintensity.scheduler.runtime.SimpleScheduler;
 import io.carbonintensity.scheduler.test.helper.AnnotationUtil;
-import io.carbonintensity.scheduler.test.helper.DisabledDummyCarbonIntensityApi;
+import io.carbonintensity.scheduler.test.helper.FixtureCarbonIntensityApi;
 import io.carbonintensity.scheduler.test.helper.MutableClock;
 
 class TestSuccessiveWindowScheduler {
@@ -40,13 +40,16 @@ class TestSuccessiveWindowScheduler {
     private static final Logger log = LoggerFactory.getLogger(TestSuccessiveWindowScheduler.class);
     public static final long SCHEDULER_WAITING_PERIOD = 101L; // minimum accepted by Awaitility
     private SimpleScheduler scheduler;
-    private final CarbonIntensityApi disabledApi = new DisabledDummyCarbonIntensityApi();
+    // Deterministic, file-backed test data (see FixtureCarbonIntensityApi) so "greenest slot" assertions
+    // below have a known, fixed answer - this is a test fixture only, not the removed CIIO-470 production
+    // fallback dataset.
+    private final CarbonIntensityApi testCarbonIntensityApi = new FixtureCarbonIntensityApi();
     private SchedulerConfig schedulerConfig;
 
     @BeforeEach
     public void beforeEach() {
         schedulerConfig = new SchedulerConfig();
-        schedulerConfig.setCarbonIntensityApi(disabledApi);
+        schedulerConfig.setCarbonIntensityApi(testCarbonIntensityApi);
     }
 
     @AfterEach

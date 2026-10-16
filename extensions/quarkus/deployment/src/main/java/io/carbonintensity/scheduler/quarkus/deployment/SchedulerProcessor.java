@@ -68,7 +68,6 @@ import io.quarkus.deployment.builditem.ConfigDescriptionBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceDirectoryBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.gizmo2.ClassOutput;
 import io.quarkus.gizmo2.Const;
@@ -90,11 +89,6 @@ public class SchedulerProcessor {
 
     static final String INVOKER_SUFFIX = "_ScheduledInvoker";
     static final String NESTED_SEPARATOR = "$_";
-
-    @BuildStep
-    NativeImageResourceDirectoryBuildItem nativeImageResourceBuildItem() {
-        return new NativeImageResourceDirectoryBuildItem("fallback");
-    }
 
     @BuildStep
     void registerQuarkusSchedulerDisableProperty(BuildProducer<ConfigDescriptionBuildItem> configDescriptions) {
